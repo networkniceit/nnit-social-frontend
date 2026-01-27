@@ -7,7 +7,7 @@ export default defineConfig({
     port: 3500,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: 'https://nnit-social-backend-production-6ad7.up.railway.app',
         changeOrigin: true
       }
     }
