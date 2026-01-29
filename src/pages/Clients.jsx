@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../axios-config';
+import { API_URL } from '../config';
 
 function Clients() {
   const [clients, setClients] = useState([]);
@@ -19,7 +20,7 @@ function Clients() {
 
   const fetchClients = async () => {
     try {
-      const response = await axios.get('/api/clients');
+      const response = await axios.get(`${API_URL}/clients`);
       setClients(response.data.clients);
     } catch (error) {
       console.error('Error:', error);
@@ -29,7 +30,7 @@ function Clients() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('/api/clients', formData);
+      await axios.post(`${API_URL}/clients`, formData);
       setShowModal(false);
       fetchClients();
       setFormData({
