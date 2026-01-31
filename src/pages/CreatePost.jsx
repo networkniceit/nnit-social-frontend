@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from '../axios-config';
+import axios from 'axios';
+import { API_URL } from '../config';
 
 function CreatePost() {
   const [clients, setClients] = useState([]);
@@ -19,7 +20,7 @@ function CreatePost() {
 
   const fetchClients = async () => {
     try {
-      const response = await axios.get('/api/clients');
+      const response = await axios.get(`${API_URL}/api/clients`);
       setClients(response.data.clients);
     } catch (error) {
       console.error('Error:', error);
@@ -34,7 +35,7 @@ function CreatePost() {
 
     setAiLoading(true);
     try {
-      const response = await axios.post('/api/ai/generate-caption', {
+      const response = await axios.post(`${API_URL}/api/ai/generate-caption`, {
         topic: formData.content || 'engaging social media post',
         tone: 'engaging',
         length: 'medium',
@@ -59,7 +60,7 @@ function CreatePost() {
 
     setAiLoading(true);
     try {
-      const response = await axios.post('/api/ai/generate-variations', {
+      const response = await axios.post(`${API_URL}/api/ai/generate-variations`, {
         caption: formData.content,
         count: 3,
         clientId: formData.clientId
@@ -81,7 +82,7 @@ function CreatePost() {
     setAiLoading(true);
     try {
       const client = clients.find(c => c.id === formData.clientId);
-      const response = await axios.post('/api/ai/generate-hashtags', {
+      const response = await axios.post(`${API_URL}/api/ai/generate-hashtags`, {
         content: formData.content,
         industry: client?.industry,
         count: 10
@@ -115,7 +116,7 @@ function CreatePost() {
     }
 
     try {
-      await axios.post('/api/posts/schedule', {
+      await axios.post(`${API_URL}/api/posts/schedule`, {
         ...formData,
         scheduledTime: formData.scheduledTime || new Date().toISOString()
       });
