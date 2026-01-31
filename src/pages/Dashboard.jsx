@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import axios from '../axios-config';
+import axios from 'axios';
+import { API_URL } from '../config';
 
 function Dashboard({ stats }) {
   const [clients, setClients] = useState([]);
@@ -10,7 +11,7 @@ function Dashboard({ stats }) {
 
   const fetchClients = async () => {
     try {
-      const response = await axios.get('/api/clients');
+      const response = await axios.get(`${API_URL}/api/clients`);
       setClients(response.data.clients);
     } catch (error) {
       console.error('Error fetching clients:', error);
