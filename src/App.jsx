@@ -10,7 +10,8 @@ import Calendar from './pages/Calendar';
 import Analytics from './pages/Analytics';
 import AIAssistant from './pages/AIAssistant';
 import Settings from './pages/Settings';
-
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 import { API_URL } from './config';
 
 function App() {
@@ -36,22 +37,22 @@ function App() {
         {/* Sidebar */}
         <aside style={styles.sidebar}>
           <div style={styles.logo}>
-            <h1 style={styles.logoText}>ðŸš€ NNIT Social</h1>
+            <h1 style={styles.logoText}>🚀 NNIT Social</h1>
             <p style={styles.logoSubtext}>Automation Suite</p>
           </div>
 
           <nav style={styles.nav}>
-            <NavLink to="/" icon="ðŸ“Š" text="Dashboard" />
-            <NavLink to="/clients" icon="ðŸ‘¥" text="Clients" />
-            <NavLink to="/create-post" icon="âœï¸" text="Create Post" />
-            <NavLink to="/calendar" icon="ðŸ“…" text="Calendar" />
-            <NavLink to="/analytics" icon="ðŸ“ˆ" text="Analytics" />
-            <NavLink to="/ai-assistant" icon="ðŸ¤–" text="AI Assistant" />
-            <NavLink to="/settings" icon="âš™ï¸" text="Settings" />
+            <NavLink to="/" icon="📊" text="Dashboard" />
+            <NavLink to="/clients" icon="👥" text="Clients" />
+            <NavLink to="/create-post" icon="✏️" text="Create Post" />
+            <NavLink to="/calendar" icon="📅" text="Calendar" />
+            <NavLink to="/analytics" icon="📈" text="Analytics" />
+            <NavLink to="/ai-assistant" icon="🤖" text="AI Assistant" />
+            <NavLink to="/settings" icon="⚙️" text="Settings" />
           </nav>
 
           <div style={styles.sidebarFooter}>
-            <p style={styles.footerText}>Â© 2026 NNIT Enterprise</p>
+            <p style={styles.footerText}>© 2026 NNIT Enterprise</p>
             <p style={styles.footerText}>networkniceit@gmail.com</p>
           </div>
         </aside>
@@ -66,6 +67,8 @@ function App() {
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/ai-assistant" element={<AIAssistant />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
           </Routes>
         </main>
       </div>
