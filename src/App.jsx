@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import axios from 'axios';
 
@@ -16,11 +16,6 @@ import { API_URL } from './config';
 
 function App() {
   const [stats, setStats] = useState(null);
-  const [currentView, setCurrentView] = useState('dashboard');
-
-  // useEffect(() => {
-  //   fetchStats();
-  // }, []);
 
   const fetchStats = async () => {
     try {
@@ -34,7 +29,6 @@ function App() {
   return (
     <BrowserRouter>
       <div style={styles.container}>
-        {/* Sidebar */}
         <aside style={styles.sidebar}>
           <div style={styles.logo}>
             <h1 style={styles.logoText}>🚀 NNIT Social</h1>
@@ -44,11 +38,7 @@ function App() {
           <nav style={styles.nav}>
             <NavLink to="/" icon="📊" text="Dashboard" />
             <NavLink to="/clients" icon="👥" text="Clients" />
-<<<<<<< HEAD
             <NavLink to="/create-post" icon="✏️" text="Create Post" />
-=======
-            <NavLink to="/create-post" icon="✍️" text="Create Post" />
->>>>>>> 71601f0c87d977d93637c7fa5ee2e35d07d00598
             <NavLink to="/calendar" icon="📅" text="Calendar" />
             <NavLink to="/analytics" icon="📈" text="Analytics" />
             <NavLink to="/ai-assistant" icon="🤖" text="AI Assistant" />
@@ -61,7 +51,6 @@ function App() {
           </div>
         </aside>
 
-        {/* Main Content */}
         <main style={styles.main}>
           <Routes>
             <Route path="/" element={<Dashboard stats={stats} />} />
