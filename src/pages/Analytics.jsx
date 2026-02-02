@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from '../axios-config';
+import axios from 'axios';
+import { API_URL } from '../config';
 
 function Analytics() {
   const [clients, setClients] = useState([]);
@@ -22,7 +23,7 @@ function Analytics() {
 
   const fetchClients = async () => {
     try {
-      const response = await axios.get('/api/clients');
+      const response = await axios.get(`${API_URL}/api/clients`);
       setClients(response.data.clients);
     } catch (error) {
       console.error('Error:', error);
@@ -31,7 +32,7 @@ function Analytics() {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await axios.get(`/api/analytics/${selectedClient}`);
+      const response = await axios.get(`${API_URL}/api/analytics/${selectedClient}`);
       setAnalytics(response.data.analytics);
     } catch (error) {
       console.error('Error:', error);
@@ -40,7 +41,7 @@ function Analytics() {
 
   const fetchEngagement = async () => {
     try {
-      const response = await axios.get(`/api/analytics/${selectedClient}/engagement?timeframe=month`);
+      const response = await axios.get(`${API_URL}/api/analytics/${selectedClient}/engagement?timeframe=month`);
       setEngagement(response.data.engagement);
     } catch (error) {
       console.error('Error:', error);
@@ -49,7 +50,7 @@ function Analytics() {
 
   const fetchGrowth = async () => {
     try {
-      const response = await axios.get(`/api/analytics/${selectedClient}/growth`);
+      const response = await axios.get(`${API_URL}/api/analytics/${selectedClient}/growth`);
       setGrowth(response.data.growth);
     } catch (error) {
       console.error('Error:', error);

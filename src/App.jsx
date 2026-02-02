@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import axios from 'axios';
 
@@ -44,7 +44,11 @@ function App() {
           <nav style={styles.nav}>
             <NavLink to="/" icon="📊" text="Dashboard" />
             <NavLink to="/clients" icon="👥" text="Clients" />
+<<<<<<< HEAD
             <NavLink to="/create-post" icon="✏️" text="Create Post" />
+=======
+            <NavLink to="/create-post" icon="✍️" text="Create Post" />
+>>>>>>> 71601f0c87d977d93637c7fa5ee2e35d07d00598
             <NavLink to="/calendar" icon="📅" text="Calendar" />
             <NavLink to="/analytics" icon="📈" text="Analytics" />
             <NavLink to="/ai-assistant" icon="🤖" text="AI Assistant" />
