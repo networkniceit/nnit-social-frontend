@@ -11,7 +11,7 @@ import Analytics from './pages/Analytics';
 import AIAssistant from './pages/AIAssistant';
 import Settings from './pages/Settings';
 import Terms from './pages/Terms';
-import Privacy from './pages/Privacy'; // Make sure this is imported!
+import Privacy from './pages/Privacy';
 import { API_URL } from './config';
 
 function App() {
@@ -43,10 +43,6 @@ function App() {
             <NavLink to="/analytics" icon="📈" text="Analytics" />
             <NavLink to="/ai-assistant" icon="🤖" text="AI Assistant" />
             <NavLink to="/settings" icon="⚙️" text="Settings" />
-            {/* Link to Terms (optional) */}
-            <NavLink to="/terms" icon="📜" text="Terms" />
-            {/* Link to Privacy */}
-            <NavLink to="/privacy" icon="🔒" text="Privacy" />
           </nav>
 
           <div style={styles.sidebarFooter}>
@@ -148,4 +144,5 @@ const styles = {
   },
 };
 
+export default App;
 export default App;
