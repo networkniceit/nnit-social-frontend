@@ -2,6 +2,8 @@
 
 This project includes infrastructure to support Google Search Console verification through environment variables.
 
+⚠️ **IMPORTANT:** You must set the actual Google verification code in your Vercel environment variables for the verification to work. The placeholder value in `.env.production` will not work.
+
 ## Setup Instructions
 
 ### 1. Get Your Verification Code from Google Search Console
