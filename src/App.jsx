@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import axios from 'axios';
+import axios from './axios-config';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -12,7 +12,6 @@ import AIAssistant from './pages/AIAssistant';
 import Settings from './pages/Settings';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
-import { API_URL } from './config';
 
 function App() {
   const [stats, setStats] = useState(null);
@@ -31,22 +30,22 @@ function App() {
       <div style={styles.container}>
         <aside style={styles.sidebar}>
           <div style={styles.logo}>
-            <h1 style={styles.logoText}>🚀 NNIT Social</h1>
+            <h1 style={styles.logoText}>?? NNIT Social</h1>
             <p style={styles.logoSubtext}>Automation Suite</p>
           </div>
 
           <nav style={styles.nav}>
-            <NavLink to="/" icon="📊" text="Dashboard" />
-            <NavLink to="/clients" icon="👥" text="Clients" />
-            <NavLink to="/create-post" icon="✏️" text="Create Post" />
-            <NavLink to="/calendar" icon="📅" text="Calendar" />
-            <NavLink to="/analytics" icon="📈" text="Analytics" />
-            <NavLink to="/ai-assistant" icon="🤖" text="AI Assistant" />
-            <NavLink to="/settings" icon="⚙️" text="Settings" />
+            <NavLink to="/" icon="??" text="Dashboard" />
+            <NavLink to="/clients" icon="??" text="Clients" />
+            <NavLink to="/create-post" icon="??" text="Create Post" />
+            <NavLink to="/calendar" icon="??" text="Calendar" />
+            <NavLink to="/analytics" icon="??" text="Analytics" />
+            <NavLink to="/ai-assistant" icon="??" text="AI Assistant" />
+            <NavLink to="/settings" icon="??" text="Settings" />
           </nav>
 
           <div style={styles.sidebarFooter}>
-            <p style={styles.footerText}>© 2026 NNIT Enterprise</p>
+            <p style={styles.footerText}>� 2026 NNIT Enterprise</p>
             <p style={styles.footerText}>networkniceit@gmail.com</p>
           </div>
         </aside>
