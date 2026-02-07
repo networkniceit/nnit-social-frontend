@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { API_URL } from '../config';
+import axios from '../axios-config';
 
 function Dashboard({ stats }) {
   const [clients, setClients] = useState([]);
