@@ -10,7 +10,7 @@ function Dashboard({ stats }) {
 
   const fetchClients = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/clients`);
+      
       setClients(response.data.clients);
     } catch (error) {
       console.error('Error fetching clients:', error);

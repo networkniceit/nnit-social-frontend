@@ -19,7 +19,7 @@ function Clients() {
 
   const fetchClients = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/clients`);
+      const response = await axios.get('/api/clients');
       setClients(response.data.clients);
     } catch (error) {
       console.error('Error:', error);
@@ -29,7 +29,7 @@ function Clients() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_URL}/api/clients`, formData);
+      await axios.post('/api/clients', formData);
       setShowModal(false);
       fetchClients();
       setFormData({
