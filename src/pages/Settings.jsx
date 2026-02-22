@@ -1,6 +1,45 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 function Settings() {
+  const [instagramToken, setInstagramToken] = useState('');
+  const [instagramAccountId, setInstagramAccountId] = useState('');
+  const [username, setUsername] = useState('');
+
+  useEffect(() => {
+    // Check URL parameters from OAuth callback
+    const params = new URLSearchParams(window.location.search);
+    
+    if (params.get('instagram_connected') === 'true') {
+      const token = params.get('access_token');
+      const accountId = params.get('account_id');
+      const user = params.get('username');
+      
+      if (token && accountId) {
+        setInstagramToken(token);
+        setInstagramAccountId(accountId);
+        setUsername(user || '');
+        
+        // Save to localStorage so it persists
+        localStorage.setItem('instagram_token', token);
+        localStorage.setItem('instagram_account_id', accountId);
+        localStorage.setItem('instagram_username', user || '');
+        
+        // Clean up URL
+        window.history.replaceState({}, document.title, '/settings');
+      }
+    } else {
+      // Load from localStorage if available
+      const savedToken = localStorage.getItem('instagram_token');
+      const savedAccountId = localStorage.getItem('instagram_account_id');
+      const savedUsername = localStorage.getItem('instagram_username');
+      
+      if (savedToken) setInstagramToken(savedToken);
+      if (savedAccountId) setInstagramAccountId(savedAccountId);
+      if (savedUsername) setUsername(savedUsername);
+    }
+  }, []);
+
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>Settings</h1>
@@ -21,9 +60,49 @@ function Settings() {
 
         <div style={styles.apiSection}>
           <h3 style={styles.apiTitle}>📸 Instagram</h3>
-          <input type="text" placeholder="Instagram Business Account ID" style={styles.input} />
-          <input type="text" placeholder="Access Token" style={styles.input} />
-          <button style={styles.saveButton}>Save Instagram Keys</button>
+          <input 
+            type="text" 
+            placeholder="Instagram Business Account ID" 
+            value={instagramAccountId} 
+            onChange={(e) => setInstagramAccountId(e.target.value)}
+            readOnly
+            style={styles.input} 
+          />
+          <input 
+            type="text" 
+            placeholder="Access Token" 
+            value={instagramToken} 
+            onChange={(e) => setInstagramToken(e.target.value)}
+            readOnly
+            style={styles.input} 
+          />
+          {instagramToken && (
+            <p style={{ color: '#10b981', fontSize: '14px', marginTop: '8px' }}>
+              ✓ Connected as {username || 'Instagram User'}
+            </p>
+          )}
+          <button 
+            onClick={() => {
+              // Clear stored data
+              localStorage.removeItem('instagram_token');
+              localStorage.removeItem('instagram_account_id');
+              localStorage.removeItem('instagram_username');
+              setInstagramToken('');
+              setInstagramAccountId('');
+              setUsername('');
+            }}
+            style={{...styles.saveButton, background: instagramToken ? '#ef4444' : 'linear-gradient(to right, #9333ea, #ec4899)', marginTop: '10px'}}
+          >
+            {instagramToken ? 'Disconnect Instagram Account' : 'Connect Instagram Account'}
+          </button>
+          {!instagramToken && (
+            <button 
+              onClick={() => window.location.href = `${API_URL}/api/auth/instagram`}
+              style={{...styles.saveButton, background: 'linear-gradient(to right, #9333ea, #ec4899)', marginTop: '10px'}}
+            >
+              Authorize Instagram
+            </button>
+          )}
         </div>
 
         <div style={styles.apiSection}>

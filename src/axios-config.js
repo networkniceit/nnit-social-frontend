@@ -1,6 +1,5 @@
 ﻿import axios from 'axios';
-
-const API_URL = 'https://nnit-social-backend-production-6ad7.up.railway.app';
+import { API_URL } from './config';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
