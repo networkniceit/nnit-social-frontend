@@ -16,6 +16,10 @@ function Settings() {
   const [tiktokUsername, setTiktokUsername] = useState('');
   const [tiktokOpenId, setTiktokOpenId] = useState('');
 
+  const [twitterConnected, setTwitterConnected] = useState(false);
+  const [twitterUsername, setTwitterUsername] = useState('');
+  const [twitterName, setTwitterName] = useState('');
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
@@ -111,6 +115,27 @@ function Settings() {
       setLoading(false);
     }
 
+    // Handle Twitter OAuth callback
+    else if (params.get('twitter_connected') === 'true') {
+      const twitterUser = decodeURIComponent(params.get('twitter_username') || '');
+      const twitterDisplayName = decodeURIComponent(params.get('twitter_name') || '');
+
+      setTwitterUsername(twitterUser);
+      setTwitterName(twitterDisplayName);
+      setTwitterConnected(true);
+
+      window.history.replaceState({}, document.title, '/settings');
+      setLoading(false);
+    }
+
+    // Handle Twitter error
+    else if (params.get('twitter_error') === 'true') {
+      const reason = decodeURIComponent(params.get('reason') || 'Unknown error');
+      alert(`Twitter connection failed: ${reason}`);
+      window.history.replaceState({}, document.title, '/settings');
+      setLoading(false);
+    }
+
     else {
       // Load Instagram from DB
       const loadInstagram = fetch(`${API_URL}/api/auth/instagram/load?userId=1`)
@@ -167,7 +192,19 @@ function Settings() {
         })
         .catch(() => {});
 
-      Promise.all([loadInstagram, loadFacebook, loadTiktok]).finally(() => setLoading(false));
+      // Load Twitter from DB
+      const loadTwitter = fetch(`${API_URL}/api/auth/twitter/load?userId=1`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.account) {
+            setTwitterUsername(data.account.page_id || '');
+            setTwitterName(data.account.instagram_account_name || '');
+            setTwitterConnected(true);
+          }
+        })
+        .catch(() => {});
+
+      Promise.all([loadInstagram, loadFacebook, loadTiktok, loadTwitter]).finally(() => setLoading(false));
     }
   }, []);
 
@@ -193,6 +230,13 @@ function Settings() {
     setTiktokConnected(false);
     setTiktokUsername('');
     setTiktokOpenId('');
+  };
+
+  const handleTwitterDisconnect = async () => {
+    await fetch(`${API_URL}/api/auth/twitter/disconnect?userId=1`, { method: 'DELETE' });
+    setTwitterConnected(false);
+    setTwitterUsername('');
+    setTwitterName('');
   };
 
   return (
@@ -305,21 +349,44 @@ function Settings() {
           )}
         </div>
 
-        {/* TWITTER */}
+        {/* TWITTER/X */}
         <div style={styles.apiSection}>
           <h3 style={styles.apiTitle}>🐦 Twitter/X</h3>
-          <input type="text" placeholder="API Key" style={styles.input} />
-          <input type="text" placeholder="API Secret" style={styles.input} />
-          <button style={styles.saveButton}>Save Twitter Keys</button>
+          {loading ? (
+            <p style={{ color: '#718096', fontSize: '14px' }}>Loading...</p>
+          ) : twitterConnected ? (
+            <>
+              <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '8px' }}>
+                ✓ Connected as @{twitterUsername}
+              </p>
+              <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>
+                {twitterName}
+              </p>
+              <button onClick={handleTwitterDisconnect} style={{ ...styles.saveButton, background: '#ef4444' }}>
+                Disconnect Twitter/X
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => window.location.href = `${API_URL}/api/auth/twitter`}
+              style={{ ...styles.saveButton, background: '#000000' }}
+            >
+              Connect Twitter/X
+            </button>
+          )}
         </div>
 
         {/* LINKEDIN */}
         <div style={styles.apiSection}>
           <h3 style={styles.apiTitle}>💼 LinkedIn</h3>
-          <input type="text" placeholder="Client ID" style={styles.input} />
-          <input type="text" placeholder="Client Secret" style={styles.input} />
-          <button style={styles.saveButton}>Save LinkedIn Keys</button>
+          <button
+            onClick={() => alert('LinkedIn OAuth coming soon!')}
+            style={{ ...styles.saveButton, background: '#0077B5' }}
+          >
+            Connect LinkedIn
+          </button>
         </div>
+
       </div>
 
       <div style={styles.card}>
