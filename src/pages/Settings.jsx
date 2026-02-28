@@ -12,6 +12,10 @@ function Settings() {
   const [facebookPageId, setFacebookPageId] = useState('');
   const [facebookPageToken, setFacebookPageToken] = useState('');
 
+  const [tiktokConnected, setTiktokConnected] = useState(false);
+  const [tiktokUsername, setTiktokUsername] = useState('');
+  const [tiktokOpenId, setTiktokOpenId] = useState('');
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
@@ -86,6 +90,27 @@ function Settings() {
       setLoading(false);
     }
 
+    // Handle TikTok OAuth callback
+    else if (params.get('tiktok_connected') === 'true') {
+      const openId = params.get('tiktok_open_id');
+      const displayName = decodeURIComponent(params.get('tiktok_username') || '');
+
+      setTiktokOpenId(openId);
+      setTiktokUsername(displayName);
+      setTiktokConnected(true);
+
+      window.history.replaceState({}, document.title, '/settings');
+      setLoading(false);
+    }
+
+    // Handle TikTok error
+    else if (params.get('tiktok_error') === 'true') {
+      const reason = decodeURIComponent(params.get('reason') || 'Unknown error');
+      alert(`TikTok connection failed: ${reason}`);
+      window.history.replaceState({}, document.title, '/settings');
+      setLoading(false);
+    }
+
     else {
       // Load Instagram from DB
       const loadInstagram = fetch(`${API_URL}/api/auth/instagram/load?userId=1`)
@@ -130,7 +155,19 @@ function Settings() {
         })
         .catch(() => {});
 
-      Promise.all([loadInstagram, loadFacebook]).finally(() => setLoading(false));
+      // Load TikTok from DB
+      const loadTiktok = fetch(`${API_URL}/api/auth/tiktok/load?userId=1`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.account) {
+            setTiktokOpenId(data.account.instagram_account_id || '');
+            setTiktokUsername(data.account.instagram_account_name || '');
+            setTiktokConnected(true);
+          }
+        })
+        .catch(() => {});
+
+      Promise.all([loadInstagram, loadFacebook, loadTiktok]).finally(() => setLoading(false));
     }
   }, []);
 
@@ -149,6 +186,13 @@ function Settings() {
     setFacebookPageName('');
     setFacebookPageId('');
     setFacebookPageToken('');
+  };
+
+  const handleTiktokDisconnect = async () => {
+    await fetch(`${API_URL}/api/auth/tiktok/disconnect?userId=1`, { method: 'DELETE' });
+    setTiktokConnected(false);
+    setTiktokUsername('');
+    setTiktokOpenId('');
   };
 
   return (
@@ -175,10 +219,7 @@ function Settings() {
               <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>
                 Page ID: {facebookPageId}
               </p>
-              <button
-                onClick={handleFacebookDisconnect}
-                style={{ ...styles.saveButton, background: '#ef4444' }}
-              >
+              <button onClick={handleFacebookDisconnect} style={{ ...styles.saveButton, background: '#ef4444' }}>
                 Disconnect Facebook Page
               </button>
             </>
@@ -237,6 +278,33 @@ function Settings() {
           )}
         </div>
 
+        {/* TIKTOK */}
+        <div style={styles.apiSection}>
+          <h3 style={styles.apiTitle}>🎵 TikTok</h3>
+          {loading ? (
+            <p style={{ color: '#718096', fontSize: '14px' }}>Loading...</p>
+          ) : tiktokConnected ? (
+            <>
+              <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '8px' }}>
+                ✓ Connected as {tiktokUsername}
+              </p>
+              <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>
+                Open ID: {tiktokOpenId}
+              </p>
+              <button onClick={handleTiktokDisconnect} style={{ ...styles.saveButton, background: '#ef4444' }}>
+                Disconnect TikTok
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => window.location.href = `${API_URL}/api/auth/tiktok`}
+              style={{ ...styles.saveButton, background: '#000000' }}
+            >
+              Connect TikTok
+            </button>
+          )}
+        </div>
+
         {/* TWITTER */}
         <div style={styles.apiSection}>
           <h3 style={styles.apiTitle}>🐦 Twitter/X</h3>
@@ -251,14 +319,6 @@ function Settings() {
           <input type="text" placeholder="Client ID" style={styles.input} />
           <input type="text" placeholder="Client Secret" style={styles.input} />
           <button style={styles.saveButton}>Save LinkedIn Keys</button>
-        </div>
-
-        {/* TIKTOK */}
-        <div style={styles.apiSection}>
-          <h3 style={styles.apiTitle}>🎵 TikTok</h3>
-          <input type="text" placeholder="Client Key" style={styles.input} />
-          <input type="text" placeholder="Client Secret" style={styles.input} />
-          <button style={styles.saveButton}>Save TikTok Keys</button>
         </div>
       </div>
 
