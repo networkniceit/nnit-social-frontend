@@ -20,6 +20,10 @@ function Settings() {
   const [twitterUsername, setTwitterUsername] = useState('');
   const [twitterName, setTwitterName] = useState('');
 
+  const [youtubeConnected, setYoutubeConnected] = useState(false);
+  const [youtubeChannel, setYoutubeChannel] = useState('');
+  const [youtubeId, setYoutubeId] = useState('');
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
@@ -73,13 +77,7 @@ function Settings() {
       fetch(`${API_URL}/api/auth/facebook/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: 1,
-          pageId,
-          pageName,
-          pageAccessToken: pageToken,
-          accessToken: pageToken
-        })
+        body: JSON.stringify({ userId: 1, pageId, pageName, pageAccessToken: pageToken, accessToken: pageToken })
       }).catch(err => console.error('Failed to save Facebook to database:', err));
 
       window.history.replaceState({}, document.title, '/settings');
@@ -136,6 +134,27 @@ function Settings() {
       setLoading(false);
     }
 
+    // Handle YouTube OAuth callback
+    else if (params.get('youtube_connected') === 'true') {
+      const channel = decodeURIComponent(params.get('youtube_channel') || '');
+      const channelId = params.get('youtube_id') || '';
+
+      setYoutubeChannel(channel);
+      setYoutubeId(channelId);
+      setYoutubeConnected(true);
+
+      window.history.replaceState({}, document.title, '/settings');
+      setLoading(false);
+    }
+
+    // Handle YouTube error
+    else if (params.get('youtube_error') === 'true') {
+      const reason = decodeURIComponent(params.get('reason') || 'Unknown error');
+      alert(`YouTube connection failed: ${reason}`);
+      window.history.replaceState({}, document.title, '/settings');
+      setLoading(false);
+    }
+
     else {
       // Load Instagram from DB
       const loadInstagram = fetch(`${API_URL}/api/auth/instagram/load?userId=1`)
@@ -172,9 +191,9 @@ function Settings() {
         .then(res => res.json())
         .then(data => {
           if (data.success && data.account) {
-            setFacebookPageId(data.account.page_id || '');
-            setFacebookPageName(data.account.instagram_account_name || '');
-            setFacebookPageToken(data.account.page_access_token || '');
+            setFacebookPageId(data.account.pageId || '');
+            setFacebookPageName(data.account.pageName || '');
+            setFacebookPageToken(data.account.pageAccessToken || '');
             setFacebookConnected(true);
           }
         })
@@ -185,8 +204,8 @@ function Settings() {
         .then(res => res.json())
         .then(data => {
           if (data.success && data.account) {
-            setTiktokOpenId(data.account.instagram_account_id || '');
-            setTiktokUsername(data.account.instagram_account_name || '');
+            setTiktokOpenId(data.account.accountId || data.account.pageId || '');
+            setTiktokUsername(data.account.username || data.account.accountName || '');
             setTiktokConnected(true);
           }
         })
@@ -197,14 +216,26 @@ function Settings() {
         .then(res => res.json())
         .then(data => {
           if (data.success && data.account) {
-            setTwitterUsername(data.account.page_id || '');
-            setTwitterName(data.account.instagram_account_name || '');
+            setTwitterUsername(data.account.username || '');
+            setTwitterName(data.account.accountName || '');
             setTwitterConnected(true);
           }
         })
         .catch(() => {});
 
-      Promise.all([loadInstagram, loadFacebook, loadTiktok, loadTwitter]).finally(() => setLoading(false));
+      // Load YouTube from DB
+      const loadYoutube = fetch(`${API_URL}/api/auth/youtube/load?userId=1`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.account) {
+            setYoutubeChannel(data.account.accountName || data.account.username || '');
+            setYoutubeId(data.account.accountId || data.account.pageId || '');
+            setYoutubeConnected(true);
+          }
+        })
+        .catch(() => {});
+
+      Promise.all([loadInstagram, loadFacebook, loadTiktok, loadTwitter, loadYoutube]).finally(() => setLoading(false));
     }
   }, []);
 
@@ -239,6 +270,13 @@ function Settings() {
     setTwitterName('');
   };
 
+  const handleYoutubeDisconnect = async () => {
+    await fetch(`${API_URL}/api/auth/youtube/disconnect?userId=1`, { method: 'DELETE' });
+    setYoutubeConnected(false);
+    setYoutubeChannel('');
+    setYoutubeId('');
+  };
+
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>Settings</h1>
@@ -257,21 +295,14 @@ function Settings() {
             <p style={{ color: '#718096', fontSize: '14px' }}>Loading...</p>
           ) : facebookConnected ? (
             <>
-              <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '8px' }}>
-                ✓ Connected as {facebookPageName}
-              </p>
-              <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>
-                Page ID: {facebookPageId}
-              </p>
+              <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '8px' }}>✓ Connected as {facebookPageName}</p>
+              <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>Page ID: {facebookPageId}</p>
               <button onClick={handleFacebookDisconnect} style={{ ...styles.saveButton, background: '#ef4444' }}>
                 Disconnect Facebook Page
               </button>
             </>
           ) : (
-            <button
-              onClick={() => window.location.href = `${API_URL}/api/auth/facebook`}
-              style={{ ...styles.saveButton, background: '#1877F2' }}
-            >
+            <button onClick={() => window.location.href = `${API_URL}/api/auth/facebook`} style={{ ...styles.saveButton, background: '#1877F2' }}>
               Connect Facebook Page
             </button>
           )}
@@ -284,37 +315,17 @@ function Settings() {
             <p style={{ color: '#718096', fontSize: '14px' }}>Loading...</p>
           ) : (
             <>
-              <input
-                type="text"
-                placeholder="Instagram Business Account ID"
-                value={instagramAccountId}
-                readOnly
-                style={styles.input}
-              />
-              <input
-                type="text"
-                placeholder="Access Token"
-                value={instagramToken}
-                readOnly
-                style={styles.input}
-              />
+              <input type="text" placeholder="Instagram Business Account ID" value={instagramAccountId} readOnly style={styles.input} />
+              <input type="text" placeholder="Access Token" value={instagramToken} readOnly style={styles.input} />
               {instagramToken && (
-                <p style={{ color: '#10b981', fontSize: '14px', marginTop: '8px' }}>
-                  ✓ Connected as {username || 'Instagram User'}
-                </p>
+                <p style={{ color: '#10b981', fontSize: '14px', marginTop: '8px' }}>✓ Connected as {username || 'Instagram User'}</p>
               )}
               {instagramToken ? (
-                <button
-                  onClick={handleDisconnect}
-                  style={{ ...styles.saveButton, background: '#ef4444', marginTop: '10px' }}
-                >
+                <button onClick={handleDisconnect} style={{ ...styles.saveButton, background: '#ef4444', marginTop: '10px' }}>
                   Disconnect Instagram Account
                 </button>
               ) : (
-                <button
-                  onClick={() => window.location.href = `${API_URL}/api/auth/instagram`}
-                  style={{ ...styles.saveButton, background: 'linear-gradient(to right, #9333ea, #ec4899)', marginTop: '10px' }}
-                >
+                <button onClick={() => window.location.href = `${API_URL}/api/auth/instagram`} style={{ ...styles.saveButton, background: 'linear-gradient(to right, #9333ea, #ec4899)', marginTop: '10px' }}>
                   Authorize Instagram
                 </button>
               )}
@@ -329,21 +340,14 @@ function Settings() {
             <p style={{ color: '#718096', fontSize: '14px' }}>Loading...</p>
           ) : tiktokConnected ? (
             <>
-              <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '8px' }}>
-                ✓ Connected as {tiktokUsername}
-              </p>
-              <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>
-                Open ID: {tiktokOpenId}
-              </p>
+              <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '8px' }}>✓ Connected as {tiktokUsername}</p>
+              <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>Open ID: {tiktokOpenId}</p>
               <button onClick={handleTiktokDisconnect} style={{ ...styles.saveButton, background: '#ef4444' }}>
                 Disconnect TikTok
               </button>
             </>
           ) : (
-            <button
-              onClick={() => window.location.href = `${API_URL}/api/auth/tiktok`}
-              style={{ ...styles.saveButton, background: '#000000' }}
-            >
+            <button onClick={() => window.location.href = `${API_URL}/api/auth/tiktok`} style={{ ...styles.saveButton, background: '#000000' }}>
               Connect TikTok
             </button>
           )}
@@ -356,22 +360,35 @@ function Settings() {
             <p style={{ color: '#718096', fontSize: '14px' }}>Loading...</p>
           ) : twitterConnected ? (
             <>
-              <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '8px' }}>
-                ✓ Connected as @{twitterUsername}
-              </p>
-              <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>
-                {twitterName}
-              </p>
+              <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '8px' }}>✓ Connected as @{twitterUsername}</p>
+              <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>{twitterName}</p>
               <button onClick={handleTwitterDisconnect} style={{ ...styles.saveButton, background: '#ef4444' }}>
                 Disconnect Twitter/X
               </button>
             </>
           ) : (
-            <button
-              onClick={() => window.location.href = `${API_URL}/api/auth/twitter`}
-              style={{ ...styles.saveButton, background: '#000000' }}
-            >
+            <button onClick={() => window.location.href = `${API_URL}/api/auth/twitter`} style={{ ...styles.saveButton, background: '#000000' }}>
               Connect Twitter/X
+            </button>
+          )}
+        </div>
+
+        {/* YOUTUBE */}
+        <div style={styles.apiSection}>
+          <h3 style={styles.apiTitle}>▶️ YouTube</h3>
+          {loading ? (
+            <p style={{ color: '#718096', fontSize: '14px' }}>Loading...</p>
+          ) : youtubeConnected ? (
+            <>
+              <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '8px' }}>✓ Connected as {youtubeChannel}</p>
+              <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>Channel ID: {youtubeId}</p>
+              <button onClick={handleYoutubeDisconnect} style={{ ...styles.saveButton, background: '#ef4444' }}>
+                Disconnect YouTube
+              </button>
+            </>
+          ) : (
+            <button onClick={() => window.location.href = `${API_URL}/api/auth/youtube`} style={{ ...styles.saveButton, background: '#FF0000' }}>
+              Connect YouTube
             </button>
           )}
         </div>
@@ -379,10 +396,7 @@ function Settings() {
         {/* LINKEDIN */}
         <div style={styles.apiSection}>
           <h3 style={styles.apiTitle}>💼 LinkedIn</h3>
-          <button
-            onClick={() => alert('LinkedIn OAuth coming soon!')}
-            style={{ ...styles.saveButton, background: '#0077B5' }}
-          >
+          <button onClick={() => alert('LinkedIn OAuth coming soon!')} style={{ ...styles.saveButton, background: '#0077B5' }}>
             Connect LinkedIn
           </button>
         </div>
@@ -393,31 +407,16 @@ function Settings() {
         <h2 style={styles.cardTitle}>General Settings</h2>
 
         <div style={styles.setting}>
-          <label style={styles.label}>
-            <input type="checkbox" defaultChecked />
-            Enable Auto-Reply
-          </label>
+          <label style={styles.label}><input type="checkbox" defaultChecked /> Enable Auto-Reply</label>
         </div>
-
         <div style={styles.setting}>
-          <label style={styles.label}>
-            <input type="checkbox" defaultChecked />
-            Generate Hashtags Automatically
-          </label>
+          <label style={styles.label}><input type="checkbox" defaultChecked /> Generate Hashtags Automatically</label>
         </div>
-
         <div style={styles.setting}>
-          <label style={styles.label}>
-            <input type="checkbox" defaultChecked />
-            Best Time Posting Suggestions
-          </label>
+          <label style={styles.label}><input type="checkbox" defaultChecked /> Best Time Posting Suggestions</label>
         </div>
-
         <div style={styles.setting}>
-          <label style={styles.label}>
-            <input type="checkbox" />
-            Content Moderation (Review before posting)
-          </label>
+          <label style={styles.label}><input type="checkbox" /> Content Moderation (Review before posting)</label>
         </div>
       </div>
 
