@@ -24,139 +24,114 @@ function Settings() {
   const [youtubeChannel, setYoutubeChannel] = useState('');
   const [youtubeId, setYoutubeId] = useState('');
 
+  const [linkedinConnected, setLinkedinConnected] = useState(false);
+  const [linkedinName, setLinkedinName] = useState('');
+  const [linkedinId, setLinkedinId] = useState('');
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
-    // Handle Instagram OAuth callback
     if (params.get('instagram_connected') === 'true') {
       const token = params.get('access_token');
       const accountId = params.get('account_id');
       const user = params.get('username');
-
       if (token && accountId) {
         setInstagramToken(token);
         setInstagramAccountId(accountId);
         setUsername(user || '');
-
         localStorage.setItem('instagram_token', token);
         localStorage.setItem('instagram_account_id', accountId);
         localStorage.setItem('instagram_username', user || '');
-
         fetch(`${API_URL}/api/auth/instagram/save`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: 1,
-            accessToken: token,
-            instagramAccountId: accountId,
-            username: user,
-            pageId: null,
-            pageAccessToken: token
-          })
-        })
-        .then(res => res.json())
-        .then(data => console.log('Saved to database:', data))
-        .catch(err => console.error('Failed to save to database:', err));
-
+          body: JSON.stringify({ userId: 1, accessToken: token, instagramAccountId: accountId, username: user, pageId: null, pageAccessToken: token })
+        }).then(res => res.json()).then(data => console.log('Saved to database:', data)).catch(err => console.error('Failed to save to database:', err));
         window.history.replaceState({}, document.title, '/settings');
       }
       setLoading(false);
     }
 
-    // Handle Facebook OAuth callback
     else if (params.get('facebook_connected') === 'true') {
       const pageId = params.get('facebook_page_id');
       const pageName = decodeURIComponent(params.get('facebook_page_name') || '');
       const pageToken = params.get('facebook_page_token');
-
       setFacebookPageId(pageId);
       setFacebookPageName(pageName);
       setFacebookPageToken(pageToken);
       setFacebookConnected(true);
-
       fetch(`${API_URL}/api/auth/facebook/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 1, pageId, pageName, pageAccessToken: pageToken, accessToken: pageToken })
       }).catch(err => console.error('Failed to save Facebook to database:', err));
-
       window.history.replaceState({}, document.title, '/settings');
       setLoading(false);
     }
 
-    // Handle Facebook error
     else if (params.get('facebook_error') === 'true') {
-      const reason = decodeURIComponent(params.get('reason') || 'Unknown error');
-      alert(`Facebook connection failed: ${reason}`);
+      alert(`Facebook connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
       window.history.replaceState({}, document.title, '/settings');
       setLoading(false);
     }
 
-    // Handle TikTok OAuth callback
     else if (params.get('tiktok_connected') === 'true') {
-      const openId = params.get('tiktok_open_id');
-      const displayName = decodeURIComponent(params.get('tiktok_username') || '');
-
-      setTiktokOpenId(openId);
-      setTiktokUsername(displayName);
+      setTiktokOpenId(params.get('tiktok_open_id'));
+      setTiktokUsername(decodeURIComponent(params.get('tiktok_username') || ''));
       setTiktokConnected(true);
-
       window.history.replaceState({}, document.title, '/settings');
       setLoading(false);
     }
 
-    // Handle TikTok error
     else if (params.get('tiktok_error') === 'true') {
-      const reason = decodeURIComponent(params.get('reason') || 'Unknown error');
-      alert(`TikTok connection failed: ${reason}`);
+      alert(`TikTok connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
       window.history.replaceState({}, document.title, '/settings');
       setLoading(false);
     }
 
-    // Handle Twitter OAuth callback
     else if (params.get('twitter_connected') === 'true') {
-      const twitterUser = decodeURIComponent(params.get('twitter_username') || '');
-      const twitterDisplayName = decodeURIComponent(params.get('twitter_name') || '');
-
-      setTwitterUsername(twitterUser);
-      setTwitterName(twitterDisplayName);
+      setTwitterUsername(decodeURIComponent(params.get('twitter_username') || ''));
+      setTwitterName(decodeURIComponent(params.get('twitter_name') || ''));
       setTwitterConnected(true);
-
       window.history.replaceState({}, document.title, '/settings');
       setLoading(false);
     }
 
-    // Handle Twitter error
     else if (params.get('twitter_error') === 'true') {
-      const reason = decodeURIComponent(params.get('reason') || 'Unknown error');
-      alert(`Twitter connection failed: ${reason}`);
+      alert(`Twitter connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
       window.history.replaceState({}, document.title, '/settings');
       setLoading(false);
     }
 
-    // Handle YouTube OAuth callback
     else if (params.get('youtube_connected') === 'true') {
-      const channel = decodeURIComponent(params.get('youtube_channel') || '');
-      const channelId = params.get('youtube_id') || '';
-
-      setYoutubeChannel(channel);
-      setYoutubeId(channelId);
+      setYoutubeChannel(decodeURIComponent(params.get('youtube_channel') || ''));
+      setYoutubeId(params.get('youtube_id') || '');
       setYoutubeConnected(true);
-
       window.history.replaceState({}, document.title, '/settings');
       setLoading(false);
     }
 
-    // Handle YouTube error
     else if (params.get('youtube_error') === 'true') {
-      const reason = decodeURIComponent(params.get('reason') || 'Unknown error');
-      alert(`YouTube connection failed: ${reason}`);
+      alert(`YouTube connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
+      window.history.replaceState({}, document.title, '/settings');
+      setLoading(false);
+    }
+
+    else if (params.get('linkedin_connected') === 'true') {
+      setLinkedinName(decodeURIComponent(params.get('linkedin_name') || ''));
+      setLinkedinId(params.get('linkedin_id') || '');
+      setLinkedinConnected(true);
+      window.history.replaceState({}, document.title, '/settings');
+      setLoading(false);
+    }
+
+    else if (params.get('linkedin_error') === 'true') {
+      alert(`LinkedIn connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
       window.history.replaceState({}, document.title, '/settings');
       setLoading(false);
     }
 
     else {
-      // Load Instagram from DB
       const loadInstagram = fetch(`${API_URL}/api/auth/instagram/load?userId=1`)
         .then(res => res.json())
         .then(data => {
@@ -186,7 +161,6 @@ function Settings() {
           if (savedUsername) setUsername(savedUsername);
         });
 
-      // Load Facebook from DB
       const loadFacebook = fetch(`${API_URL}/api/auth/facebook/load?userId=1`)
         .then(res => res.json())
         .then(data => {
@@ -199,43 +173,51 @@ function Settings() {
         })
         .catch(() => {});
 
-      // Load TikTok from DB
       const loadTiktok = fetch(`${API_URL}/api/auth/tiktok/load?userId=1`)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.account) {
-            setTiktokOpenId(data.account.accountId || data.account.pageId || '');
-            setTiktokUsername(data.account.username || data.account.accountName || '');
+            setTiktokOpenId(data.account.instagram_account_id || data.account.pageId || '');
+            setTiktokUsername(data.account.instagram_account_name || data.account.username || '');
             setTiktokConnected(true);
           }
         })
         .catch(() => {});
 
-      // Load Twitter from DB
       const loadTwitter = fetch(`${API_URL}/api/auth/twitter/load?userId=1`)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.account) {
-            setTwitterUsername(data.account.username || '');
-            setTwitterName(data.account.accountName || '');
+            setTwitterUsername(data.account.username || data.account.instagram_account_id || '');
+            setTwitterName(data.account.accountName || data.account.instagram_account_name || '');
             setTwitterConnected(true);
           }
         })
         .catch(() => {});
 
-      // Load YouTube from DB
       const loadYoutube = fetch(`${API_URL}/api/auth/youtube/load?userId=1`)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.account) {
-            setYoutubeChannel(data.account.accountName || data.account.username || '');
-            setYoutubeId(data.account.accountId || data.account.pageId || '');
+            setYoutubeChannel(data.account.instagram_account_name || data.account.accountName || '');
+            setYoutubeId(data.account.instagram_account_id || data.account.accountId || '');
             setYoutubeConnected(true);
           }
         })
         .catch(() => {});
 
-      Promise.all([loadInstagram, loadFacebook, loadTiktok, loadTwitter, loadYoutube]).finally(() => setLoading(false));
+      const loadLinkedin = fetch(`${API_URL}/api/auth/linkedin/load?userId=1`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.account) {
+            setLinkedinName(data.account.accountName || data.account.username || '');
+            setLinkedinId(data.account.accountId || '');
+            setLinkedinConnected(true);
+          }
+        })
+        .catch(() => {});
+
+      Promise.all([loadInstagram, loadFacebook, loadTiktok, loadTwitter, loadYoutube, loadLinkedin]).finally(() => setLoading(false));
     }
   }, []);
 
@@ -277,6 +259,13 @@ function Settings() {
     setYoutubeId('');
   };
 
+  const handleLinkedinDisconnect = async () => {
+    await fetch(`${API_URL}/api/auth/linkedin/disconnect?userId=1`, { method: 'DELETE' });
+    setLinkedinConnected(false);
+    setLinkedinName('');
+    setLinkedinId('');
+  };
+
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>Settings</h1>
@@ -284,9 +273,7 @@ function Settings() {
 
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>Platform API Keys</h2>
-        <p style={styles.description}>
-          Connect your social media accounts by entering API credentials below
-        </p>
+        <p style={styles.description}>Connect your social media accounts by entering API credentials below</p>
 
         {/* FACEBOOK */}
         <div style={styles.apiSection}>
@@ -313,23 +300,18 @@ function Settings() {
           <h3 style={styles.apiTitle}>📸 Instagram</h3>
           {loading ? (
             <p style={{ color: '#718096', fontSize: '14px' }}>Loading...</p>
-          ) : (
+          ) : instagramToken ? (
             <>
-              <input type="text" placeholder="Instagram Business Account ID" value={instagramAccountId} readOnly style={styles.input} />
-              <input type="text" placeholder="Access Token" value={instagramToken} readOnly style={styles.input} />
-              {instagramToken && (
-                <p style={{ color: '#10b981', fontSize: '14px', marginTop: '8px' }}>✓ Connected as {username || 'Instagram User'}</p>
-              )}
-              {instagramToken ? (
-                <button onClick={handleDisconnect} style={{ ...styles.saveButton, background: '#ef4444', marginTop: '10px' }}>
-                  Disconnect Instagram Account
-                </button>
-              ) : (
-                <button onClick={() => window.location.href = `${API_URL}/api/auth/instagram`} style={{ ...styles.saveButton, background: 'linear-gradient(to right, #9333ea, #ec4899)', marginTop: '10px' }}>
-                  Authorize Instagram
-                </button>
-              )}
+              <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '8px' }}>✓ Connected as {username || 'Instagram User'}</p>
+              <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>Account ID: {instagramAccountId}</p>
+              <button onClick={handleDisconnect} style={{ ...styles.saveButton, background: '#ef4444' }}>
+                Disconnect Instagram Account
+              </button>
             </>
+          ) : (
+            <button onClick={() => window.location.href = `${API_URL}/api/auth/instagram`} style={{ ...styles.saveButton, background: 'linear-gradient(to right, #9333ea, #ec4899)' }}>
+              Authorize Instagram
+            </button>
           )}
         </div>
 
@@ -396,16 +378,27 @@ function Settings() {
         {/* LINKEDIN */}
         <div style={styles.apiSection}>
           <h3 style={styles.apiTitle}>💼 LinkedIn</h3>
-          <button onClick={() => alert('LinkedIn OAuth coming soon!')} style={{ ...styles.saveButton, background: '#0077B5' }}>
-            Connect LinkedIn
-          </button>
+          {loading ? (
+            <p style={{ color: '#718096', fontSize: '14px' }}>Loading...</p>
+          ) : linkedinConnected ? (
+            <>
+              <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '8px' }}>✓ Connected as {linkedinName}</p>
+              <p style={{ color: '#718096', fontSize: '12px', marginBottom: '12px' }}>Profile ID: {linkedinId}</p>
+              <button onClick={handleLinkedinDisconnect} style={{ ...styles.saveButton, background: '#ef4444' }}>
+                Disconnect LinkedIn
+              </button>
+            </>
+          ) : (
+            <button onClick={() => window.location.href = `${API_URL}/api/auth/linkedin`} style={{ ...styles.saveButton, background: '#0077B5' }}>
+              Connect LinkedIn
+            </button>
+          )}
         </div>
 
       </div>
 
       <div style={styles.card}>
         <h2 style={styles.cardTitle}>General Settings</h2>
-
         <div style={styles.setting}>
           <label style={styles.label}><input type="checkbox" defaultChecked /> Enable Auto-Reply</label>
         </div>
