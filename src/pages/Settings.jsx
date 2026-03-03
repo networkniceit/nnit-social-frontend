@@ -28,196 +28,153 @@ function Settings() {
   const [linkedinName, setLinkedinName] = useState('');
   const [linkedinId, setLinkedinId] = useState('');
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-
-    if (params.get('instagram_connected') === 'true') {
-      const token = params.get('access_token');
-      const accountId = params.get('account_id');
-      const user = params.get('username');
-      if (token && accountId) {
-        setInstagramToken(token);
-        setInstagramAccountId(accountId);
-        setUsername(user || '');
-        localStorage.setItem('instagram_token', token);
-        localStorage.setItem('instagram_account_id', accountId);
-        localStorage.setItem('instagram_username', user || '');
-        fetch(`${API_URL}/api/auth/instagram/save`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: 1, accessToken: token, instagramAccountId: accountId, username: user, pageId: null, pageAccessToken: token })
-        }).then(res => res.json()).then(data => console.log('Saved to database:', data)).catch(err => console.error('Failed to save to database:', err));
-        window.history.replaceState({}, document.title, '/settings');
-      }
-      setLoading(false);
-    }
-
-    else if (params.get('facebook_connected') === 'true') {
-      const pageId = params.get('facebook_page_id');
-      const pageName = decodeURIComponent(params.get('facebook_page_name') || '');
-      const pageToken = params.get('facebook_page_token');
-      setFacebookPageId(pageId);
-      setFacebookPageName(pageName);
-      setFacebookPageToken(pageToken);
-      setFacebookConnected(true);
-      fetch(`${API_URL}/api/auth/facebook/save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 1, pageId, pageName, pageAccessToken: pageToken, accessToken: pageToken })
-      }).catch(err => console.error('Failed to save Facebook to database:', err));
-      window.history.replaceState({}, document.title, '/settings');
-      setLoading(false);
-    }
-
-    else if (params.get('facebook_error') === 'true') {
-      alert(`Facebook connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
-      window.history.replaceState({}, document.title, '/settings');
-      setLoading(false);
-    }
-
-    else if (params.get('tiktok_connected') === 'true') {
-      setTiktokOpenId(params.get('tiktok_open_id'));
-      setTiktokUsername(decodeURIComponent(params.get('tiktok_username') || ''));
-      setTiktokConnected(true);
-      window.history.replaceState({}, document.title, '/settings');
-      setLoading(false);
-    }
-
-    else if (params.get('tiktok_error') === 'true') {
-      alert(`TikTok connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
-      window.history.replaceState({}, document.title, '/settings');
-      setLoading(false);
-    }
-
-    else if (params.get('twitter_connected') === 'true') {
-      setTwitterUsername(decodeURIComponent(params.get('twitter_username') || ''));
-      setTwitterName(decodeURIComponent(params.get('twitter_name') || ''));
-      setTwitterConnected(true);
-      window.history.replaceState({}, document.title, '/settings');
-      setLoading(false);
-    }
-
-    else if (params.get('twitter_error') === 'true') {
-      alert(`Twitter connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
-      window.history.replaceState({}, document.title, '/settings');
-      setLoading(false);
-    }
-
-    else if (params.get('youtube_connected') === 'true') {
-      setYoutubeChannel(decodeURIComponent(params.get('youtube_channel') || ''));
-      setYoutubeId(params.get('youtube_id') || '');
-      setYoutubeConnected(true);
-      window.history.replaceState({}, document.title, '/settings');
-      setLoading(false);
-    }
-
-    else if (params.get('youtube_error') === 'true') {
-      alert(`YouTube connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
-      window.history.replaceState({}, document.title, '/settings');
-      setLoading(false);
-    }
-
-    else if (params.get('linkedin_connected') === 'true') {
-      setLinkedinName(decodeURIComponent(params.get('linkedin_name') || ''));
-      setLinkedinId(params.get('linkedin_id') || '');
-      setLinkedinConnected(true);
-      window.history.replaceState({}, document.title, '/settings');
-      setLoading(false);
-    }
-
-    else if (params.get('linkedin_error') === 'true') {
-      alert(`LinkedIn connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
-      window.history.replaceState({}, document.title, '/settings');
-      setLoading(false);
-    }
-
-    else {
-      const loadInstagram = fetch(`${API_URL}/api/auth/instagram/load?userId=1`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.account) {
-            const { access_token, instagram_account_id, instagram_account_name } = data.account;
-            setInstagramToken(access_token || '');
-            setInstagramAccountId(instagram_account_id || '');
-            setUsername(instagram_account_name || '');
-            localStorage.setItem('instagram_token', access_token || '');
-            localStorage.setItem('instagram_account_id', instagram_account_id || '');
-            localStorage.setItem('instagram_username', instagram_account_name || '');
-          } else {
-            const savedToken = localStorage.getItem('instagram_token');
-            const savedAccountId = localStorage.getItem('instagram_account_id');
-            const savedUsername = localStorage.getItem('instagram_username');
-            if (savedToken) setInstagramToken(savedToken);
-            if (savedAccountId) setInstagramAccountId(savedAccountId);
-            if (savedUsername) setUsername(savedUsername);
-          }
-        })
-        .catch(() => {
+  // ✅ FIXED: always load all platforms from DB regardless of URL params
+  const loadAllPlatforms = () => {
+    const loadInstagram = fetch(`${API_URL}/api/auth/instagram/load?userId=1`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.account) {
+          const { access_token, instagram_account_id, instagram_account_name } = data.account;
+          setInstagramToken(access_token || '');
+          setInstagramAccountId(instagram_account_id || '');
+          setUsername(instagram_account_name || '');
+          localStorage.setItem('instagram_token', access_token || '');
+          localStorage.setItem('instagram_account_id', instagram_account_id || '');
+          localStorage.setItem('instagram_username', instagram_account_name || '');
+        } else {
           const savedToken = localStorage.getItem('instagram_token');
           const savedAccountId = localStorage.getItem('instagram_account_id');
           const savedUsername = localStorage.getItem('instagram_username');
           if (savedToken) setInstagramToken(savedToken);
           if (savedAccountId) setInstagramAccountId(savedAccountId);
           if (savedUsername) setUsername(savedUsername);
-        });
+        }
+      })
+      .catch(() => {
+        const savedToken = localStorage.getItem('instagram_token');
+        const savedAccountId = localStorage.getItem('instagram_account_id');
+        const savedUsername = localStorage.getItem('instagram_username');
+        if (savedToken) setInstagramToken(savedToken);
+        if (savedAccountId) setInstagramAccountId(savedAccountId);
+        if (savedUsername) setUsername(savedUsername);
+      });
 
-      const loadFacebook = fetch(`${API_URL}/api/auth/facebook/load?userId=1`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.account) {
-            setFacebookPageId(data.account.pageId || '');
-            setFacebookPageName(data.account.pageName || '');
-            setFacebookPageToken(data.account.pageAccessToken || '');
-            setFacebookConnected(true);
-          }
-        })
-        .catch(() => {});
+    const loadFacebook = fetch(`${API_URL}/api/auth/facebook/load?userId=1`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.account) {
+          setFacebookPageId(data.account.pageId || '');
+          setFacebookPageName(data.account.pageName || '');
+          setFacebookPageToken(data.account.pageAccessToken || '');
+          setFacebookConnected(true);
+        }
+      })
+      .catch(() => {});
 
-      const loadTiktok = fetch(`${API_URL}/api/auth/tiktok/load?userId=1`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.account) {
-            setTiktokOpenId(data.account.instagram_account_id || data.account.pageId || '');
-            setTiktokUsername(data.account.instagram_account_name || data.account.username || '');
-            setTiktokConnected(true);
-          }
-        })
-        .catch(() => {});
+    const loadTiktok = fetch(`${API_URL}/api/auth/tiktok/load?userId=1`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.account) {
+          setTiktokOpenId(data.account.instagram_account_id || data.account.pageId || '');
+          setTiktokUsername(data.account.instagram_account_name || data.account.username || '');
+          setTiktokConnected(true);
+        }
+      })
+      .catch(() => {});
 
-      const loadTwitter = fetch(`${API_URL}/api/auth/twitter/load?userId=1`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.account) {
-            setTwitterUsername(data.account.username || data.account.instagram_account_id || '');
-            setTwitterName(data.account.accountName || data.account.instagram_account_name || '');
-            setTwitterConnected(true);
-          }
-        })
-        .catch(() => {});
+    const loadTwitter = fetch(`${API_URL}/api/auth/twitter/load?userId=1`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.account) {
+          setTwitterUsername(data.account.username || data.account.twitter_id || '');
+          setTwitterName(data.account.display_name || data.account.accountName || '');
+          setTwitterConnected(true);
+        }
+      })
+      .catch(() => {});
 
-      const loadYoutube = fetch(`${API_URL}/api/auth/youtube/load?userId=1`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.account) {
-            setYoutubeChannel(data.account.instagram_account_name || data.account.accountName || '');
-            setYoutubeId(data.account.instagram_account_id || data.account.accountId || '');
-            setYoutubeConnected(true);
-          }
-        })
-        .catch(() => {});
+    const loadYoutube = fetch(`${API_URL}/api/auth/youtube/load?userId=1`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.account) {
+          setYoutubeChannel(data.account.instagram_account_name || data.account.accountName || '');
+          setYoutubeId(data.account.instagram_account_id || data.account.accountId || '');
+          setYoutubeConnected(true);
+        }
+      })
+      .catch(() => {});
 
-      const loadLinkedin = fetch(`${API_URL}/api/auth/linkedin/load?userId=1`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.account) {
-            setLinkedinName(data.account.accountName || data.account.username || '');
-            setLinkedinId(data.account.accountId || '');
-            setLinkedinConnected(true);
-          }
-        })
-        .catch(() => {});
+    const loadLinkedin = fetch(`${API_URL}/api/auth/linkedin/load?userId=1`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.account) {
+          setLinkedinName(data.account.accountName || data.account.username || '');
+          setLinkedinId(data.account.accountId || '');
+          setLinkedinConnected(true);
+        }
+      })
+      .catch(() => {});
 
-      Promise.all([loadInstagram, loadFacebook, loadTiktok, loadTwitter, loadYoutube, loadLinkedin]).finally(() => setLoading(false));
+    Promise.all([loadInstagram, loadFacebook, loadTiktok, loadTwitter, loadYoutube, loadLinkedin])
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    // ✅ FIXED: handle URL params for success/error messages
+    // then ALWAYS load all platforms from DB afterwards
+    if (params.get('instagram_connected') === 'true') {
+      window.history.replaceState({}, document.title, '/settings');
+      loadAllPlatforms();
+    }
+    else if (params.get('facebook_connected') === 'true') {
+      window.history.replaceState({}, document.title, '/settings');
+      loadAllPlatforms();
+    }
+    else if (params.get('facebook_error') === 'true') {
+      alert(`Facebook connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
+      window.history.replaceState({}, document.title, '/settings');
+      loadAllPlatforms();
+    }
+    else if (params.get('tiktok_connected') === 'true') {
+      window.history.replaceState({}, document.title, '/settings');
+      loadAllPlatforms();
+    }
+    else if (params.get('tiktok_error') === 'true') {
+      alert(`TikTok connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
+      window.history.replaceState({}, document.title, '/settings');
+      loadAllPlatforms();
+    }
+    else if (params.get('twitter_connected') === 'true') {
+      window.history.replaceState({}, document.title, '/settings');
+      loadAllPlatforms();
+    }
+    else if (params.get('twitter_error') === 'true') {
+      alert(`Twitter connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
+      window.history.replaceState({}, document.title, '/settings');
+      loadAllPlatforms();
+    }
+    else if (params.get('youtube_connected') === 'true') {
+      window.history.replaceState({}, document.title, '/settings');
+      loadAllPlatforms();
+    }
+    else if (params.get('youtube_error') === 'true') {
+      alert(`YouTube connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
+      window.history.replaceState({}, document.title, '/settings');
+      loadAllPlatforms();
+    }
+    else if (params.get('linkedin_connected') === 'true') {
+      window.history.replaceState({}, document.title, '/settings');
+      loadAllPlatforms();
+    }
+    else if (params.get('linkedin_error') === 'true') {
+      alert(`LinkedIn connection failed: ${decodeURIComponent(params.get('reason') || 'Unknown error')}`);
+      window.history.replaceState({}, document.title, '/settings');
+      loadAllPlatforms();
+    }
+    else {
+      loadAllPlatforms();
     }
   }, []);
 
@@ -440,4 +397,3 @@ const styles = {
 };
 
 export default Settings;
-
