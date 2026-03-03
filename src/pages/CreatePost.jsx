@@ -93,9 +93,11 @@ function CreatePost() {
         count: 3,
         clientId: formData.clientId
       });
-      setVariations(response.data.variations);
+      // ✅ FIXED: null safety — prevents crash if variations is undefined
+      setVariations(response.data.variations || []);
     } catch (error) {
       console.error('Error:', error);
+      setVariations([]);
     }
     setAiLoading(false);
   };
@@ -110,7 +112,8 @@ function CreatePost() {
         industry: client?.industry,
         count: 10
       });
-      setFormData({ ...formData, hashtags: response.data.hashtags.join(' ') });
+      // ✅ FIXED: null safety for hashtags array
+      setFormData({ ...formData, hashtags: (response.data.hashtags || []).join(' ') });
     } catch (error) {
       console.error('Error:', error);
     }
@@ -141,70 +144,34 @@ function CreatePost() {
     const results = [];
     const fullContent = formData.content + (formData.hashtags ? '\n\n' + formData.hashtags : '');
 
+    let imageUrl = null;
+    if (imageFile) {
+      try {
+        const fd = new FormData();
+        fd.append('image', imageFile);
+        const uploadRes = await fetch(`${API_URL}/api/upload/image`, { method: 'POST', body: fd });
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.url || null;
+      } catch (err) {
+        console.error('Image upload failed:', err);
+      }
+    }
+
     for (const platform of formData.platforms) {
       try {
-        let response;
+        const body = { content: fullContent, userId: 1 };
+        if (platform === 'instagram') body.imageUrl = imageUrl;
+        if (platform === 'facebook') body.imageUrl = imageUrl;
+        if (platform === 'youtube') body.videoUrl = imageUrl;
+        if (platform === 'tiktok') body.videoUrl = imageUrl;
 
-        if (platform === 'facebook') {
-          response = await fetch(`${API_URL}/api/facebook/post`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: fullContent, userId: 1 })
-          });
-          const data = await response.json();
-          results.push({ platform, success: data.success, postId: data.postId, error: data.error });
-        }
-
-        else if (platform === 'instagram') {
-          response = await fetch(`${API_URL}/api/instagram/post`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ caption: fullContent, userId: 1 })
-          });
-          const data = await response.json();
-          results.push({ platform, success: data.success, postId: data.postId, error: data.error });
-        }
-
-        else if (platform === 'twitter') {
-          response = await fetch(`${API_URL}/api/twitter/post`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: fullContent, userId: 1 })
-          });
-          const data = await response.json();
-          results.push({ platform, success: data.success, postId: data.postId, error: data.error });
-        }
-
-        else if (platform === 'linkedin') {
-          response = await fetch(`${API_URL}/api/linkedin/post`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: fullContent, userId: 1 })
-          });
-          const data = await response.json();
-          results.push({ platform, success: data.success, postId: data.postId, error: data.error });
-        }
-
-        else if (platform === 'tiktok') {
-          response = await fetch(`${API_URL}/api/tiktok/post`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: fullContent, userId: 1 })
-          });
-          const data = await response.json();
-          results.push({ platform, success: data.success, postId: data.postId, error: data.error });
-        }
-
-        else if (platform === 'youtube') {
-          response = await fetch(`${API_URL}/api/youtube/post`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: fullContent, userId: 1 })
-          });
-          const data = await response.json();
-          results.push({ platform, success: data.success, postId: data.postId, error: data.error });
-        }
-
+        const response = await fetch(`${API_URL}/api/${platform}/post`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        results.push({ platform, success: data.success, postId: data.postId, error: data.error });
       } catch (err) {
         results.push({ platform, success: false, error: err.message });
       }
@@ -261,11 +228,9 @@ function CreatePost() {
       <p style={styles.subtitle}>Post to all your social media platforms at once</p>
 
       <div style={styles.grid}>
-        {/* Main Form */}
         <div style={styles.mainColumn}>
           <div style={styles.form}>
 
-            {/* Client Selection */}
             {clients.length > 0 && (
               <div style={styles.formGroup}>
                 <label style={styles.label}>Select Client (optional)</label>
@@ -284,7 +249,6 @@ function CreatePost() {
               </div>
             )}
 
-            {/* Content */}
             <div style={styles.formGroup}>
               <label style={styles.label}>Post Content *</label>
               <textarea
@@ -304,7 +268,6 @@ function CreatePost() {
               </div>
             </div>
 
-            {/* Variations */}
             {variations.length > 0 && (
               <div style={styles.variations}>
                 <label style={styles.label}>AI Generated Variations:</label>
@@ -317,7 +280,6 @@ function CreatePost() {
               </div>
             )}
 
-            {/* Hashtags */}
             <div style={styles.formGroup}>
               <label style={styles.label}>Hashtags</label>
               <div style={styles.hashtagWrapper}>
@@ -334,7 +296,6 @@ function CreatePost() {
               </div>
             </div>
 
-            {/* Image Upload */}
             <div style={styles.formGroup}>
               <label style={styles.label}>Image (optional)</label>
               {imagePreview ? (
@@ -351,7 +312,6 @@ function CreatePost() {
               )}
             </div>
 
-            {/* Platforms */}
             <div style={styles.formGroup}>
               <label style={styles.label}>Select Platforms *</label>
               <div style={styles.platformGrid}>
@@ -378,7 +338,6 @@ function CreatePost() {
               </div>
             </div>
 
-            {/* Schedule Time */}
             <div style={styles.formGroup}>
               <label style={styles.label}>Schedule Time (optional)</label>
               <input
@@ -390,7 +349,6 @@ function CreatePost() {
               <p style={styles.hint}>Leave empty to publish immediately</p>
             </div>
 
-            {/* Submit Buttons */}
             <div style={styles.submitButtons}>
               <button type="button" onClick={handleSchedule} style={styles.scheduleButton}>
                 📅 Schedule Post
@@ -400,7 +358,6 @@ function CreatePost() {
               </button>
             </div>
 
-            {/* Post Results */}
             {postResults.length > 0 && (
               <div style={styles.resultsSection}>
                 <h4 style={styles.resultsTitle}>Post Results:</h4>
@@ -417,7 +374,6 @@ function CreatePost() {
           </div>
         </div>
 
-        {/* Preview Sidebar */}
         <div style={styles.sidebar}>
           <div style={styles.previewCard}>
             <h3 style={styles.previewTitle}>Post Preview</h3>
@@ -462,7 +418,6 @@ function CreatePost() {
             )}
           </div>
 
-          {/* Connected platforms status */}
           <div style={styles.tipsCard}>
             <h4 style={styles.tipsTitle}>🔗 Connected Platforms</h4>
             {platformList.map(p => (
@@ -475,7 +430,6 @@ function CreatePost() {
             ))}
           </div>
 
-          {/* AI Tips */}
           <div style={{ ...styles.tipsCard, backgroundColor: '#f0f4ff' }}>
             <h4 style={{ ...styles.tipsTitle, color: '#667eea' }}>💡 AI Tips</h4>
             <ul style={styles.tipsList}>
