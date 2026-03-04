@@ -35,10 +35,11 @@ function Settings() {
       .then(data => {
         if (data.success && data.account) {
           const { access_token, instagram_account_id, instagram_account_name } = data.account;
-          setInstagramToken(access_token || '');
+          // ✅ FIXED: fallback to instagram_account_id if access_token not returned
+          setInstagramToken(access_token || instagram_account_id || '');
           setInstagramAccountId(instagram_account_id || '');
           setUsername(instagram_account_name || '');
-          localStorage.setItem('instagram_token', access_token || '');
+          localStorage.setItem('instagram_token', access_token || instagram_account_id || '');
           localStorage.setItem('instagram_account_id', instagram_account_id || '');
           localStorage.setItem('instagram_username', instagram_account_name || '');
         } else {
