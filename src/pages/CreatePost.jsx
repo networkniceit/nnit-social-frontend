@@ -17,6 +17,7 @@ function CreatePost() {
   const [variations, setVariations] = useState([]);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [videoFile, setVideoFile] = useState(null);
   const [postResults, setPostResults] = useState([]);
   const [connectedPlatforms, setConnectedPlatforms] = useState([]);
 
@@ -158,11 +159,23 @@ function CreatePost() {
 
     for (const platform of formData.platforms) {
       try {
+        if (platform === 'tiktok') {
+          const tiktokForm = new FormData();
+          tiktokForm.append('content', fullContent);
+          if (videoFile) tiktokForm.append('video', videoFile);
+          const tiktokRes = await fetch(`${API_URL}/api/tiktok/post`, {
+            method: 'POST',
+            body: tiktokForm
+          });
+          const tiktokData = await tiktokRes.json();
+          results.push({ platform, success: tiktokData.success, error: tiktokData.error });
+          continue;
+        }
+
         const body = { content: fullContent, userId: 1 };
         if (platform === 'instagram') body.imageUrl = imageUrl;
         if (platform === 'facebook') body.imageUrl = imageUrl;
         if (platform === 'youtube') body.videoUrl = formData.videoUrl || imageUrl;
-        if (platform === 'tiktok') body.videoUrl = formData.videoUrl || imageUrl;
 
         const response = await fetch(`${API_URL}/api/${platform}/post`, {
           method: 'POST',
@@ -186,6 +199,7 @@ function CreatePost() {
       setVariations([]);
       setImageFile(null);
       setImagePreview(null);
+      setVideoFile(null);
     } else {
       alert(`Posted to ${successCount}/${results.length} platforms. Check results below.`);
     }
@@ -312,7 +326,23 @@ function CreatePost() {
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.label}>🎵 TikTok / ▶️ YouTube Video URL (optional)</label>
+              <label style={styles.label}>🎵 TikTok Video (optional)</label>
+              <label style={styles.uploadArea}>
+                <input
+                  type="file"
+                  accept="video/mp4,video/*"
+                  onChange={e => setVideoFile(e.target.files[0])}
+                  style={{ display: 'none' }}
+                />
+                <span style={{ fontSize: '32px' }}>🎬</span>
+                <span style={{ fontSize: '14px', color: '#718096', marginTop: '8px' }}>
+                  {videoFile ? `✅ ${videoFile.name}` : 'Click to upload video for TikTok'}
+                </span>
+              </label>
+            </div>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>▶️ YouTube Video URL (optional)</label>
               <input
                 type="text"
                 value={formData.videoUrl}
@@ -320,7 +350,7 @@ function CreatePost() {
                 style={styles.input}
                 placeholder="https://your-video-url.com/video.mp4"
               />
-              <p style={styles.hint}>Required for TikTok and YouTube posts. Use a direct .mp4 link.</p>
+              <p style={styles.hint}>Required for YouTube posts. Use a direct .mp4 link.</p>
             </div>
 
             <div style={styles.formGroup}>
@@ -388,28 +418,23 @@ function CreatePost() {
         <div style={styles.sidebar}>
           <div style={styles.previewCard}>
             <h3 style={styles.previewTitle}>Post Preview</h3>
-
             {formData.clientId && (
               <div style={styles.clientBadge}>
                 {clients.find(c => c.id === formData.clientId)?.name}
               </div>
             )}
-
             {imagePreview && (
               <img src={imagePreview} alt="Preview" style={{ width: '100%', borderRadius: '8px', marginBottom: '15px' }} />
             )}
-
             <div style={styles.previewContent}>
               {formData.content
                 ? <p style={{ margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{formData.content}</p>
                 : <p style={styles.placeholder}>Your post content will appear here...</p>
               }
             </div>
-
             {formData.hashtags && (
               <div style={styles.hashtagPreview}>{formData.hashtags}</div>
             )}
-
             {formData.platforms.length > 0 && (
               <div style={styles.platformPreview}>
                 <p style={styles.previewLabel}>Publishing to:</p>
@@ -420,7 +445,6 @@ function CreatePost() {
                 </div>
               </div>
             )}
-
             {formData.scheduledTime && (
               <div style={styles.schedulePreview}>
                 <p style={styles.previewLabel}>Scheduled for:</p>
