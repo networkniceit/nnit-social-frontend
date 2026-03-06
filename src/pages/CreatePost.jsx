@@ -9,7 +9,8 @@ function CreatePost() {
     content: '',
     platforms: [],
     scheduledTime: '',
-    hashtags: ''
+    hashtags: '',
+    videoUrl: ''
   });
   const [aiLoading, setAiLoading] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -93,7 +94,6 @@ function CreatePost() {
         count: 3,
         clientId: formData.clientId
       });
-      // ✅ FIXED: null safety — prevents crash if variations is undefined
       setVariations(response.data.variations || []);
     } catch (error) {
       console.error('Error:', error);
@@ -112,7 +112,6 @@ function CreatePost() {
         industry: client?.industry,
         count: 10
       });
-      // ✅ FIXED: null safety for hashtags array
       setFormData({ ...formData, hashtags: (response.data.hashtags || []).join(' ') });
     } catch (error) {
       console.error('Error:', error);
@@ -142,7 +141,7 @@ function CreatePost() {
     setPosting(true);
     setPostResults([]);
     const results = [];
-    const fullContent = formData.content + (formData.hashtags ? '\n\n' + formData.hashtags : '');
+    const fullContent = formData.content + (formData.hashtags ? '\\n\\n' + formData.hashtags : '');
 
     let imageUrl = null;
     if (imageFile) {
@@ -162,8 +161,8 @@ function CreatePost() {
         const body = { content: fullContent, userId: 1 };
         if (platform === 'instagram') body.imageUrl = imageUrl;
         if (platform === 'facebook') body.imageUrl = imageUrl;
-        if (platform === 'youtube') body.videoUrl = imageUrl;
-        if (platform === 'tiktok') body.videoUrl = imageUrl;
+        if (platform === 'youtube') body.videoUrl = formData.videoUrl || imageUrl;
+        if (platform === 'tiktok') body.videoUrl = formData.videoUrl || imageUrl;
 
         const response = await fetch(`${API_URL}/api/${platform}/post`, {
           method: 'POST',
@@ -183,7 +182,7 @@ function CreatePost() {
     const successCount = results.filter(r => r.success).length;
     if (successCount === results.length) {
       alert(`✅ Posted successfully to all ${successCount} platforms!`);
-      setFormData({ clientId: '', content: '', platforms: [], scheduledTime: '', hashtags: '' });
+      setFormData({ clientId: '', content: '', platforms: [], scheduledTime: '', hashtags: '', videoUrl: '' });
       setVariations([]);
       setImageFile(null);
       setImagePreview(null);
@@ -204,7 +203,7 @@ function CreatePost() {
         scheduledTime: formData.scheduledTime || new Date().toISOString()
       });
       alert('Post scheduled successfully!');
-      setFormData({ clientId: '', content: '', platforms: [], scheduledTime: '', hashtags: '' });
+      setFormData({ clientId: '', content: '', platforms: [], scheduledTime: '', hashtags: '', videoUrl: '' });
       setVariations([]);
     } catch (error) {
       alert('Failed to schedule post');
@@ -310,6 +309,18 @@ function CreatePost() {
                   <span style={{ fontSize: '14px', color: '#718096', marginTop: '8px' }}>Click to upload image</span>
                 </label>
               )}
+            </div>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>🎵 TikTok / ▶️ YouTube Video URL (optional)</label>
+              <input
+                type="text"
+                value={formData.videoUrl}
+                onChange={e => setFormData({ ...formData, videoUrl: e.target.value })}
+                style={styles.input}
+                placeholder="https://your-video-url.com/video.mp4"
+              />
+              <p style={styles.hint}>Required for TikTok and YouTube posts. Use a direct .mp4 link.</p>
             </div>
 
             <div style={styles.formGroup}>
