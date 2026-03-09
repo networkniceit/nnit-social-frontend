@@ -18,6 +18,7 @@ function CreatePost() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
+  const [videoPreview, setVideoPreview] = useState(null);
   const [postResults, setPostResults] = useState([]);
   const [connectedPlatforms, setConnectedPlatforms] = useState([]);
 
@@ -63,9 +64,22 @@ function CreatePost() {
     }
   };
 
+  const handleVideoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+    }
+  };
+
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
+  };
+
+  const removeVideo = () => {
+    setVideoFile(null);
+    setVideoPreview(null);
   };
 
   const generateCaption = async () => {
@@ -133,6 +147,15 @@ function CreatePost() {
     }));
   };
 
+  const uploadToCloudinary = async (file, type = 'image') => {
+    const fd = new FormData();
+    fd.append(type, file);
+    const uploadRes = await fetch(`${API_URL}/api/upload/${type}`, { method: 'POST', body: fd });
+    const uploadData = await uploadRes.json();
+    if (!uploadData.url) throw new Error(`${type} upload failed`);
+    return uploadData.url;
+  };
+
   const postToAllPlatforms = async () => {
     if (!formData.content || formData.platforms.length === 0) {
       alert('Please add content and select at least one platform');
@@ -142,40 +165,50 @@ function CreatePost() {
     setPosting(true);
     setPostResults([]);
     const results = [];
-    const fullContent = formData.content + (formData.hashtags ? '\\n\\n' + formData.hashtags : '');
+    const fullContent = formData.content + (formData.hashtags ? '\n\n' + formData.hashtags : '');
 
     let imageUrl = null;
+    let videoUrl = formData.videoUrl || null;
+
     if (imageFile) {
       try {
-        const fd = new FormData();
-        fd.append('image', imageFile);
-        const uploadRes = await fetch(`${API_URL}/api/upload/image`, { method: 'POST', body: fd });
-        const uploadData = await uploadRes.json();
-        imageUrl = uploadData.url || null;
+        imageUrl = await uploadToCloudinary(imageFile, 'image');
       } catch (err) {
         console.error('Image upload failed:', err);
       }
     }
 
+    if (videoFile) {
+      try {
+        videoUrl = await uploadToCloudinary(videoFile, 'video');
+      } catch (err) {
+        console.error('Video upload failed:', err);
+      }
+    }
+
     for (const platform of formData.platforms) {
       try {
-        if (platform === 'tiktok') {
-          const tiktokForm = new FormData();
-          tiktokForm.append('content', fullContent);
-          if (videoFile) tiktokForm.append('video', videoFile);
-          const tiktokRes = await fetch(`${API_URL}/api/tiktok/post`, {
-            method: 'POST',
-            body: tiktokForm
-          });
-          const tiktokData = await tiktokRes.json();
-          results.push({ platform, success: tiktokData.success, error: tiktokData.error });
-          continue;
-        }
-
         const body = { content: fullContent, userId: 1 };
-        if (platform === 'instagram') body.imageUrl = imageUrl;
-        if (platform === 'facebook') body.imageUrl = imageUrl;
-        if (platform === 'youtube') body.videoUrl = formData.videoUrl || imageUrl;
+
+        if (platform === 'instagram') {
+          if (videoUrl) {
+            body.videoUrl = videoUrl;
+            body.mediaType = 'REELS';
+          } else {
+            body.imageUrl = imageUrl;
+            body.mediaType = 'IMAGE';
+          }
+        }
+        if (platform === 'facebook') {
+          body.imageUrl = imageUrl;
+          body.videoUrl = videoUrl;
+        }
+        if (platform === 'tiktok') {
+          body.videoUrl = videoUrl;
+        }
+        if (platform === 'youtube') {
+          body.videoUrl = videoUrl;
+        }
 
         const response = await fetch(`${API_URL}/api/${platform}/post`, {
           method: 'POST',
@@ -200,6 +233,7 @@ function CreatePost() {
       setImageFile(null);
       setImagePreview(null);
       setVideoFile(null);
+      setVideoPreview(null);
     } else {
       alert(`Posted to ${successCount}/${results.length} platforms. Check results below.`);
     }
@@ -310,7 +344,7 @@ function CreatePost() {
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.label}>Image (optional)</label>
+              <label style={styles.label}>🖼️ Image — Facebook, Instagram (optional)</label>
               {imagePreview ? (
                 <div style={styles.imagePreviewWrapper}>
                   <img src={imagePreview} alt="Preview" style={styles.imagePreview} />
@@ -326,31 +360,22 @@ function CreatePost() {
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.label}>🎵 TikTok Video (optional)</label>
-              <label style={styles.uploadArea}>
-                <input
-                  type="file"
-                  accept="video/mp4,video/*"
-                  onChange={e => setVideoFile(e.target.files[0])}
-                  style={{ display: 'none' }}
-                />
-                <span style={{ fontSize: '32px' }}>🎬</span>
-                <span style={{ fontSize: '14px', color: '#718096', marginTop: '8px' }}>
-                  {videoFile ? `✅ ${videoFile.name}` : 'Click to upload video for TikTok'}
-                </span>
-              </label>
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>▶️ YouTube Video URL (optional)</label>
-              <input
-                type="text"
-                value={formData.videoUrl}
-                onChange={e => setFormData({ ...formData, videoUrl: e.target.value })}
-                style={styles.input}
-                placeholder="https://your-video-url.com/video.mp4"
-              />
-              <p style={styles.hint}>Required for YouTube posts. Use a direct .mp4 link.</p>
+              <label style={styles.label}>🎬 Video — Instagram Reels, TikTok, YouTube, Facebook (optional)</label>
+              {videoPreview ? (
+                <div style={styles.imagePreviewWrapper}>
+                  <video src={videoPreview} controls style={{ maxWidth: '100%', borderRadius: '8px', maxHeight: '200px' }} />
+                  <button type="button" onClick={removeVideo} style={styles.removeImageBtn}>✕ Remove</button>
+                </div>
+              ) : (
+                <label style={styles.uploadArea}>
+                  <input type="file" accept="video/mp4,video/*" onChange={handleVideoChange} style={{ display: 'none' }} />
+                  <span style={{ fontSize: '32px' }}>🎬</span>
+                  <span style={{ fontSize: '14px', color: '#718096', marginTop: '8px' }}>
+                    {videoFile ? `✅ ${videoFile.name}` : 'Click to upload video'}
+                  </span>
+                </label>
+              )}
+              <p style={styles.hint}>Used for Instagram Reels, TikTok, YouTube, and Facebook video posts</p>
             </div>
 
             <div style={styles.formGroup}>
@@ -426,6 +451,9 @@ function CreatePost() {
             {imagePreview && (
               <img src={imagePreview} alt="Preview" style={{ width: '100%', borderRadius: '8px', marginBottom: '15px' }} />
             )}
+            {videoPreview && (
+              <video src={videoPreview} controls style={{ width: '100%', borderRadius: '8px', marginBottom: '15px' }} />
+            )}
             <div style={styles.previewContent}>
               {formData.content
                 ? <p style={{ margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{formData.content}</p>
@@ -466,13 +494,13 @@ function CreatePost() {
           </div>
 
           <div style={{ ...styles.tipsCard, backgroundColor: '#f0f4ff' }}>
-            <h4 style={{ ...styles.tipsTitle, color: '#667eea' }}>💡 AI Tips</h4>
+            <h4 style={{ ...styles.tipsTitle, color: '#667eea' }}>💡 Tips</h4>
             <ul style={styles.tipsList}>
+              <li>Upload image for Facebook & Instagram photo posts</li>
+              <li>Upload video for Instagram Reels, TikTok, YouTube & Facebook</li>
               <li>Use "Generate with AI" for instant captions</li>
               <li>Try "Get Variations" for different styles</li>
-              <li>Click on any variation to use it</li>
               <li>Generate hashtags based on your content</li>
-              <li>Schedule posts for optimal times</li>
             </ul>
           </div>
         </div>
@@ -502,7 +530,7 @@ const styles = {
   hashtagWrapper: { display: 'flex', gap: '10px' },
   hashtagButton: { padding: '12px 20px', backgroundColor: '#667eea', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', whiteSpace: 'nowrap' },
   uploadArea: { border: '2px dashed #e2e8f0', borderRadius: '8px', padding: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', backgroundColor: '#f7fafc' },
-  imagePreviewWrapper: { position: 'relative', display: 'inline-block' },
+  imagePreviewWrapper: { position: 'relative', display: 'inline-block', width: '100%' },
   imagePreview: { maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', objectFit: 'cover' },
   removeImageBtn: { position: 'absolute', top: '8px', right: '8px', padding: '4px 10px', backgroundColor: '#e53e3e', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' },
   platformGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' },
