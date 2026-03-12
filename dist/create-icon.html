@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head><title>NNIT Icon Generator</title></head>
+<body>
+<canvas id="canvas" width="1024" height="1024"></canvas>
+<br>
+<button onclick="download()">Download Icon</button>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// Purple gradient background
+const gradient = ctx.createLinearGradient(0, 0, 0, 1024);
+gradient.addColorStop(0, '#667eea');
+gradient.addColorStop(1, '#764ba2');
+ctx.fillStyle = gradient;
+ctx.fillRect(0, 0, 1024, 1024);
+
+// White circle background
+ctx.fillStyle = 'rgba(255,255,255,0.2)';
+ctx.beginPath();
+ctx.arc(512, 512, 400, 0, Math.PI * 2);
+ctx.fill();
+
+// NNIT text
+ctx.fillStyle = 'white';
+ctx.font = 'bold 200px Arial';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.fillText('NNIT', 512, 480);
+
+// "Social" subtext
+ctx.font = 'bold 80px Arial';
+ctx.fillText('SOCIAL', 512, 620);
+
+// Rocket emoji (simplified as text)
+ctx.font = '150px Arial';
+ctx.fillText('🚀', 512, 280);
+
+function download() {
+  const link = document.createElement('a');
+  link.download = 'nnit-icon-1024.png';
+  link.href = canvas.toDataURL();
+  link.click();
+}
+</script>
+</body>
+</html>

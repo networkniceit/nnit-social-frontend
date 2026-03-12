@@ -475,4 +475,3 @@ const styles = {
 };
 
 export default MediaEditor;
-import React, { useState, useRef } from 'react';
