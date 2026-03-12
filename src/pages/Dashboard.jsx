@@ -70,7 +70,7 @@ function Dashboard({ stats }) {
           <div key={client.id} style={styles.clientRow}>
             <div>
               <strong>{client.name}</strong>
-              <p style={styles.clientMeta}>{client.industry} • {client.platforms.length} platforms</p>
+              <p style={styles.clientMeta}>{client.industry || 'General'} • {(client.platforms || []).length} platforms</p>
             </div>
             <span style={styles.badge}>{client.plan}</span>
           </div>
