@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
+
+const API_URL = 'https://nnit-social-backend-production-8ce8.up.railway.app';
 
 function MediaEditor() {
   const [activeTab, setActiveTab] = useState('video');
-
-  // Video state
   const [videoFile, setVideoFile] = useState(null);
   const [videoURL, setVideoURL] = useState(null);
   const [trimStart, setTrimStart] = useState(0);
@@ -12,9 +12,8 @@ function MediaEditor() {
   const [videoCaption, setVideoCaption] = useState('');
   const [captionPosition, setCaptionPosition] = useState('bottom');
   const [videoProcessing, setVideoProcessing] = useState(false);
+  const [videoProgress, setVideoProgress] = useState('');
   const videoRef = useRef(null);
-
-  // Photo state
   const [photoFile, setPhotoFile] = useState(null);
   const [photoURL, setPhotoURL] = useState(null);
   const [photoText, setPhotoText] = useState('');
@@ -25,8 +24,6 @@ function MediaEditor() {
   const [photoProcessing, setPhotoProcessing] = useState(false);
   const canvasRef = useRef(null);
   const [processedPhotoURL, setProcessedPhotoURL] = useState(null);
-
-  // Live stream state
   const [selectedPlatform, setSelectedPlatform] = useState('youtube');
   const [streamTitle, setStreamTitle] = useState('');
   const [generatedStream, setGeneratedStream] = useState(null);
@@ -41,52 +38,21 @@ function MediaEditor() {
   };
 
   const streamPlatforms = {
-    youtube: {
-      name: 'YouTube Live',
-      icon: '▶️',
-      rtmpUrl: 'rtmp://a.rtmp.youtube.com/live2',
-      dashboardUrl: 'https://studio.youtube.com',
-      instructions: 'Go to YouTube Studio → Go Live → Stream. Copy the stream key shown there and paste it into OBS or Streamlabs.'
-    },
-    facebook: {
-      name: 'Facebook Live',
-      icon: '📘',
-      rtmpUrl: 'rtmps://live-api-s.facebook.com:443/rtmp',
-      dashboardUrl: 'https://www.facebook.com/live/producer',
-      instructions: 'Go to Facebook Live Producer → Create Live Video. Copy the stream key and use it with OBS or any streaming software.'
-    },
-    instagram: {
-      name: 'Instagram Live',
-      icon: '📸',
-      rtmpUrl: 'rtmps://edgetee-upload-{dc}.facebook.com:443/rtmp',
-      dashboardUrl: 'https://www.instagram.com',
-      instructions: 'Instagram Live can be started directly from the Instagram app. Tap the + button → Live. For desktop streaming, use a third-party tool like Yellow Duck.'
-    },
-    tiktok: {
-      name: 'TikTok Live',
-      icon: '🎵',
-      rtmpUrl: 'rtmp://push.tiktokv.com/live',
-      dashboardUrl: 'https://www.tiktok.com/live/studio',
-      instructions: 'Open TikTok app → + → LIVE. For desktop, use TikTok Live Studio. You need 1000+ followers to go live.'
-    },
-    linkedin: {
-      name: 'LinkedIn Live',
-      icon: '💼',
-      rtmpUrl: 'rtmp://mio.linkedin.com/live',
-      dashboardUrl: 'https://www.linkedin.com/video/live',
-      instructions: 'LinkedIn Live requires approval. Apply at linkedin.com/help/linkedin/answer/100225. Once approved, use any RTMP-compatible streaming tool.'
-    },
+    youtube: { name: 'YouTube Live', icon: '▶️', rtmpUrl: 'rtmp://a.rtmp.youtube.com/live2', dashboardUrl: 'https://studio.youtube.com', instructions: 'Go to YouTube Studio → Go Live → Stream. Copy the stream key and paste it into OBS or Streamlabs.' },
+    facebook: { name: 'Facebook Live', icon: '📘', rtmpUrl: 'rtmps://live-api-s.facebook.com:443/rtmp', dashboardUrl: 'https://www.facebook.com/live/producer', instructions: 'Go to Facebook Live Producer → Create Live Video. Copy the stream key and use it with OBS.' },
+    instagram: { name: 'Instagram Live', icon: '📸', rtmpUrl: 'rtmps://edgetee-upload-{dc}.facebook.com:443/rtmp', dashboardUrl: 'https://www.instagram.com', instructions: 'Instagram Live from the app: tap + → Live. For desktop use Yellow Duck.' },
+    tiktok: { name: 'TikTok Live', icon: '🎵', rtmpUrl: 'rtmp://push.tiktokv.com/live', dashboardUrl: 'https://www.tiktok.com/live/studio', instructions: 'Open TikTok → + → LIVE. Need 1000+ followers. For desktop use TikTok Live Studio.' },
+    linkedin: { name: 'LinkedIn Live', icon: '💼', rtmpUrl: 'rtmp://mio.linkedin.com/live', dashboardUrl: 'https://www.linkedin.com/video/live', instructions: 'LinkedIn Live requires approval first. Once approved, use any RTMP tool with your stream key.' },
   };
 
   const handleVideoUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setVideoFile(file);
-    const url = URL.createObjectURL(file);
-    setVideoURL(url);
+    setVideoURL(URL.createObjectURL(file));
     setTrimStart(0);
     setTrimEnd(100);
-    setGeneratedStream(null);
+    setVideoProgress('');
   };
 
   const handleVideoLoaded = () => {
@@ -100,26 +66,49 @@ function MediaEditor() {
     if (videoRef.current) {
       videoRef.current.currentTime = trimStart;
       videoRef.current.play();
-      setTimeout(() => {
-        if (videoRef.current) videoRef.current.pause();
-      }, (trimEnd - trimStart) * 1000);
+      setTimeout(() => { if (videoRef.current) videoRef.current.pause(); }, (trimEnd - trimStart) * 1000);
     }
   };
 
-  const exportVideo = () => {
+  const exportVideo = async () => {
+    if (!videoFile) { alert('Please upload a video first'); return; }
     setVideoProcessing(true);
-    setTimeout(() => {
+    setVideoProgress('Uploading video to server...');
+    try {
+      const formData = new FormData();
+      formData.append('video', videoFile);
+      formData.append('startTime', trimStart.toString());
+      formData.append('endTime', trimEnd.toString());
+      formData.append('caption', videoCaption);
+      formData.append('captionPosition', captionPosition);
+      setVideoProgress('Processing with FFmpeg... this may take a moment');
+      const response = await fetch(API_URL + '/api/media/trim', { method: 'POST', body: formData });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Server error' }));
+        throw new Error(err.error || 'Server error ' + response.status);
+      }
+      setVideoProgress('Downloading processed video...');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'nnit-trimmed.mp4';
+      a.click();
+      URL.revokeObjectURL(url);
+      setVideoProgress('Done! Video downloaded.');
+    } catch (err) {
+      alert('Export failed: ' + err.message);
+      setVideoProgress('');
+    } finally {
       setVideoProcessing(false);
-      alert('Video export is ready! In production this would use FFmpeg on the backend to trim and add captions. For now, download your original video and use the trim times: ' + trimStart.toFixed(1) + 's to ' + trimEnd.toFixed(1) + 's' + (videoCaption ? ' with caption: "' + videoCaption + '"' : '') + '.');
-    }, 1500);
+    }
   };
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setPhotoFile(file);
-    const url = URL.createObjectURL(file);
-    setPhotoURL(url);
+    setPhotoURL(URL.createObjectURL(file));
     setProcessedPhotoURL(null);
   };
 
@@ -133,57 +122,34 @@ function MediaEditor() {
       const target = platformSizes[resizeTarget];
       canvas.width = target.width;
       canvas.height = target.height;
-
-      // Fill background
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Draw image (cover fit)
       const imgAspect = img.width / img.height;
       const canvasAspect = canvas.width / canvas.height;
       let drawW, drawH, drawX, drawY;
       if (imgAspect > canvasAspect) {
-        drawH = canvas.height;
-        drawW = drawH * imgAspect;
-        drawX = (canvas.width - drawW) / 2;
-        drawY = 0;
+        drawH = canvas.height; drawW = drawH * imgAspect;
+        drawX = (canvas.width - drawW) / 2; drawY = 0;
       } else {
-        drawW = canvas.width;
-        drawH = drawW / imgAspect;
-        drawX = 0;
-        drawY = (canvas.height - drawH) / 2;
+        drawW = canvas.width; drawH = drawW / imgAspect;
+        drawX = 0; drawY = (canvas.height - drawH) / 2;
       }
       ctx.drawImage(img, drawX, drawY, drawW, drawH);
-
-      // Add text overlay
       if (photoText) {
         const fSize = parseInt(fontSize) * (canvas.width / 800);
         ctx.font = 'bold ' + fSize + 'px Arial';
         ctx.textAlign = 'center';
-
-        // Shadow
         ctx.shadowColor = 'rgba(0,0,0,0.8)';
         ctx.shadowBlur = 10;
-
-        // Background bar
-        const textMetrics = ctx.measureText(photoText);
         const barHeight = fSize * 1.8;
-        let barY;
-        if (textPosition === 'top') barY = fSize * 0.5;
-        else if (textPosition === 'center') barY = canvas.height / 2 - fSize;
-        else barY = canvas.height - barHeight - 20;
-
+        let barY = textPosition === 'top' ? fSize * 0.5 : textPosition === 'center' ? canvas.height / 2 - fSize : canvas.height - barHeight - 20;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(0, barY, canvas.width, barHeight);
-
-        // Text
         ctx.fillStyle = textColor;
         ctx.shadowBlur = 0;
         ctx.fillText(photoText, canvas.width / 2, barY + fSize * 1.2);
       }
-
-      const dataURL = canvas.toDataURL('image/jpeg', 0.92);
-      setProcessedPhotoURL(dataURL);
+      setProcessedPhotoURL(canvas.toDataURL('image/jpeg', 0.92));
       setPhotoProcessing(false);
     };
     img.src = photoURL;
@@ -200,15 +166,7 @@ function MediaEditor() {
   const generateStreamInfo = () => {
     if (!streamTitle.trim()) { alert('Please enter a stream title'); return; }
     const platform = streamPlatforms[selectedPlatform];
-    setGeneratedStream({
-      platform: platform.name,
-      icon: platform.icon,
-      title: streamTitle,
-      rtmpUrl: platform.rtmpUrl,
-      dashboardUrl: platform.dashboardUrl,
-      instructions: platform.instructions,
-      generatedAt: new Date().toLocaleString()
-    });
+    setGeneratedStream({ ...platform, title: streamTitle, generatedAt: new Date().toLocaleString() });
   };
 
   const tabs = [
@@ -221,7 +179,6 @@ function MediaEditor() {
     <div style={styles.container}>
       <h1 style={styles.title}>Media Editor</h1>
       <p style={styles.subtitle}>Edit videos, photos and set up live streams</p>
-
       <div style={styles.tabs}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -231,42 +188,35 @@ function MediaEditor() {
         ))}
       </div>
 
-      {/* VIDEO EDITOR */}
       {activeTab === 'video' && (
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>🎬 Video Editor</h2>
           <p style={styles.description}>Trim your video and add captions overlay</p>
-
           <div style={styles.uploadArea}>
             <input type="file" accept="video/*" onChange={handleVideoUpload} style={{ display: 'none' }} id="videoUpload" />
             <label htmlFor="videoUpload" style={styles.uploadLabel}>
               {videoFile ? '📹 ' + videoFile.name : '📁 Click to upload video'}
             </label>
           </div>
-
           {videoURL && (
             <div style={styles.videoSection}>
               <video ref={videoRef} src={videoURL} controls style={styles.videoPreview} onLoadedMetadata={handleVideoLoaded} />
-
               <div style={styles.section}>
                 <h3 style={styles.sectionTitle}>✂️ Trim Video</h3>
                 <p style={styles.hint}>Duration: {videoDuration.toFixed(1)}s</p>
                 <div style={styles.trimRow}>
                   <label style={styles.label}>Start: {trimStart.toFixed(1)}s</label>
                   <input type="range" min="0" max={videoDuration} step="0.1" value={trimStart}
-                    onChange={e => setTrimStart(Math.min(parseFloat(e.target.value), trimEnd - 0.5))}
-                    style={styles.slider} />
+                    onChange={e => setTrimStart(Math.min(parseFloat(e.target.value), trimEnd - 0.5))} style={styles.slider} />
                 </div>
                 <div style={styles.trimRow}>
                   <label style={styles.label}>End: {trimEnd.toFixed(1)}s</label>
                   <input type="range" min="0" max={videoDuration} step="0.1" value={trimEnd}
-                    onChange={e => setTrimEnd(Math.max(parseFloat(e.target.value), trimStart + 0.5))}
-                    style={styles.slider} />
+                    onChange={e => setTrimEnd(Math.max(parseFloat(e.target.value), trimStart + 0.5))} style={styles.slider} />
                 </div>
                 <p style={styles.hint}>Selected: {(trimEnd - trimStart).toFixed(1)} seconds</p>
                 <button onClick={previewTrim} style={styles.secondaryButton}>▶️ Preview Trim</button>
               </div>
-
               <div style={styles.section}>
                 <h3 style={styles.sectionTitle}>💬 Add Caption Overlay</h3>
                 <input type="text" placeholder="Enter caption text..." value={videoCaption}
@@ -277,7 +227,9 @@ function MediaEditor() {
                   <option value="bottom">Bottom</option>
                 </select>
               </div>
-
+              {videoProgress && (
+                <div style={styles.progressBox}>⏳ {videoProgress}</div>
+              )}
               <button onClick={exportVideo} disabled={videoProcessing} style={styles.primaryButton}>
                 {videoProcessing ? '⏳ Processing...' : '⬇️ Export Video'}
               </button>
@@ -286,54 +238,36 @@ function MediaEditor() {
         </div>
       )}
 
-      {/* PHOTO EDITOR */}
       {activeTab === 'photo' && (
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>📸 Photo Editor</h2>
           <p style={styles.description}>Resize for any platform and add text overlay</p>
-
           <div style={styles.uploadArea}>
             <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} id="photoUpload" />
             <label htmlFor="photoUpload" style={styles.uploadLabel}>
               {photoFile ? '🖼️ ' + photoFile.name : '📁 Click to upload photo'}
             </label>
           </div>
-
           {photoURL && (
             <div style={styles.photoSection}>
               <div style={styles.photoPreviewRow}>
-                <div>
-                  <p style={styles.hint}>Original</p>
-                  <img src={photoURL} alt="original" style={styles.photoPreview} />
-                </div>
-                {processedPhotoURL && (
-                  <div>
-                    <p style={styles.hint}>Processed</p>
-                    <img src={processedPhotoURL} alt="processed" style={styles.photoPreview} />
-                  </div>
-                )}
+                <div><p style={styles.hint}>Original</p><img src={photoURL} alt="original" style={styles.photoPreview} /></div>
+                {processedPhotoURL && <div><p style={styles.hint}>Processed</p><img src={processedPhotoURL} alt="processed" style={styles.photoPreview} /></div>}
               </div>
-
               <canvas ref={canvasRef} style={{ display: 'none' }} />
-
               <div style={styles.section}>
                 <h3 style={styles.sectionTitle}>📐 Resize for Platform</h3>
                 <select value={resizeTarget} onChange={e => setResizeTarget(e.target.value)} style={styles.select}>
-                  {Object.entries(platformSizes).map(([key, val]) => (
-                    <option key={key} value={key}>{val.label}</option>
-                  ))}
+                  {Object.entries(platformSizes).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}
                 </select>
               </div>
-
               <div style={styles.section}>
                 <h3 style={styles.sectionTitle}>✏️ Add Text Overlay</h3>
                 <input type="text" placeholder="Enter text to overlay..." value={photoText}
                   onChange={e => setPhotoText(e.target.value)} style={styles.input} />
                 <div style={styles.row}>
                   <select value={textPosition} onChange={e => setTextPosition(e.target.value)} style={{ ...styles.select, flex: 1 }}>
-                    <option value="top">Top</option>
-                    <option value="center">Center</option>
-                    <option value="bottom">Bottom</option>
+                    <option value="top">Top</option><option value="center">Center</option><option value="bottom">Bottom</option>
                   </select>
                   <div style={styles.colorRow}>
                     <label style={styles.label}>Color:</label>
@@ -341,35 +275,28 @@ function MediaEditor() {
                   </div>
                   <div style={styles.colorRow}>
                     <label style={styles.label}>Size: {fontSize}px</label>
-                    <input type="range" min="16" max="80" value={fontSize}
-                      onChange={e => setFontSize(e.target.value)} style={styles.slider} />
+                    <input type="range" min="16" max="80" value={fontSize} onChange={e => setFontSize(e.target.value)} style={styles.slider} />
                   </div>
                 </div>
               </div>
-
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button onClick={processPhoto} disabled={photoProcessing} style={styles.primaryButton}>
                   {photoProcessing ? '⏳ Processing...' : '⚙️ Process Photo'}
                 </button>
-                {processedPhotoURL && (
-                  <button onClick={downloadPhoto} style={styles.secondaryButton}>⬇️ Download</button>
-                )}
+                {processedPhotoURL && <button onClick={downloadPhoto} style={styles.secondaryButton}>⬇️ Download</button>}
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* LIVE STREAM */}
       {activeTab === 'live' && (
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>🔴 Live Stream Setup</h2>
           <p style={styles.description}>Generate stream info and get setup instructions for each platform</p>
-
           <div style={styles.form}>
             <input type="text" placeholder="Stream title (e.g. Product Launch Live)" value={streamTitle}
               onChange={e => setStreamTitle(e.target.value)} style={styles.input} />
-
             <div style={styles.platformGrid}>
               {Object.entries(streamPlatforms).map(([key, platform]) => (
                 <button key={key} onClick={() => setSelectedPlatform(key)}
@@ -379,17 +306,12 @@ function MediaEditor() {
                 </button>
               ))}
             </div>
-
-            <button onClick={generateStreamInfo} style={styles.primaryButton}>
-              🔴 Generate Stream Info
-            </button>
+            <button onClick={generateStreamInfo} style={styles.primaryButton}>🔴 Generate Stream Info</button>
           </div>
-
           {generatedStream && (
             <div style={styles.streamResult}>
-              <h3 style={styles.sectionTitle}>{generatedStream.icon} {generatedStream.platform} — Ready to Stream</h3>
+              <h3 style={styles.sectionTitle}>{generatedStream.icon} {generatedStream.name} — Ready to Stream</h3>
               <p style={styles.hint}>Title: {generatedStream.title}</p>
-
               <div style={styles.streamBox}>
                 <div style={styles.streamField}>
                   <span style={styles.streamLabel}>RTMP Server URL</span>
@@ -398,21 +320,15 @@ function MediaEditor() {
                 <div style={styles.streamField}>
                   <span style={styles.streamLabel}>Stream Key</span>
                   <div style={styles.streamValue}>
-                    Get this from your platform dashboard →{' '}
-                    <a href={generatedStream.dashboardUrl} target="_blank" rel="noreferrer" style={{ color: '#667eea' }}>
-                      Open Dashboard
-                    </a>
+                    Get from your platform dashboard →{' '}
+                    <a href={generatedStream.dashboardUrl} target="_blank" rel="noreferrer" style={{ color: '#667eea' }}>Open Dashboard</a>
                   </div>
                 </div>
               </div>
-
               <div style={styles.instructionsBox}>
                 <strong>📋 Setup Instructions:</strong>
-                <p style={{ margin: '8px 0 0 0', fontSize: '14px', lineHeight: '1.7', color: '#4a5568' }}>
-                  {generatedStream.instructions}
-                </p>
+                <p style={{ margin: '8px 0 0 0', fontSize: '14px', lineHeight: '1.7', color: '#4a5568' }}>{generatedStream.instructions}</p>
               </div>
-
               <div style={styles.obsBox}>
                 <strong>🎮 OBS Settings:</strong>
                 <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4a5568', lineHeight: '1.7' }}>
@@ -455,6 +371,7 @@ const styles = {
   select: { width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '14px', marginBottom: '10px' },
   primaryButton: { padding: '14px 28px', background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '600' },
   secondaryButton: { padding: '12px 24px', backgroundColor: '#f7fafc', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
+  progressBox: { padding: '12px 16px', backgroundColor: '#ebf8ff', borderRadius: '8px', fontSize: '14px', color: '#2b6cb0', border: '1px solid #bee3f8' },
   photoSection: { display: 'flex', flexDirection: 'column', gap: '20px' },
   photoPreviewRow: { display: 'flex', gap: '20px', flexWrap: 'wrap' },
   photoPreview: { maxWidth: '300px', maxHeight: '250px', borderRadius: '8px', objectFit: 'contain', border: '1px solid #e2e8f0' },
