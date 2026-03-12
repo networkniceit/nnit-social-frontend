@@ -9,6 +9,7 @@ import CreatePost from './pages/CreatePost';
 import Calendar from './pages/Calendar';
 import Analytics from './pages/Analytics';
 import AIAssistant from './pages/AIAssistant';
+import MediaEditor from './pages/MediaEditor';
 import Settings from './pages/Settings';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
@@ -41,6 +42,7 @@ function App() {
             <NavLink to="/calendar" icon="??" text="Calendar" />
             <NavLink to="/analytics" icon="??" text="Analytics" />
             <NavLink to="/ai-assistant" icon="??" text="AI Assistant" />
+            <NavLink to="/media-editor" icon="🎬" text="Media Editor" />
             <NavLink to="/settings" icon="??" text="Settings" />
           </nav>
 
@@ -58,6 +60,7 @@ function App() {
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/ai-assistant" element={<AIAssistant />} />
+            <Route path="/media-editor" element={<MediaEditor />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
