@@ -4,6 +4,8 @@ const API_URL = 'https://nnit-social-backend-production-8ce8.up.railway.app';
 
 function MediaEditor() {
   const [activeTab, setActiveTab] = useState('video');
+
+  // Video state
   const [videoFile, setVideoFile] = useState(null);
   const [videoURL, setVideoURL] = useState(null);
   const [trimStart, setTrimStart] = useState(0);
@@ -14,6 +16,8 @@ function MediaEditor() {
   const [videoProcessing, setVideoProcessing] = useState(false);
   const [videoProgress, setVideoProgress] = useState('');
   const videoRef = useRef(null);
+
+  // Photo state
   const [photoFile, setPhotoFile] = useState(null);
   const [photoURL, setPhotoURL] = useState(null);
   const [photoText, setPhotoText] = useState('');
@@ -24,9 +28,31 @@ function MediaEditor() {
   const [photoProcessing, setPhotoProcessing] = useState(false);
   const canvasRef = useRef(null);
   const [processedPhotoURL, setProcessedPhotoURL] = useState(null);
+
+  // Live stream state
   const [selectedPlatform, setSelectedPlatform] = useState('youtube');
   const [streamTitle, setStreamTitle] = useState('');
   const [generatedStream, setGeneratedStream] = useState(null);
+
+  // Audio/Voice state
+  const [audioVideoFile, setAudioVideoFile] = useState(null);
+  const [audioMode, setAudioMode] = useState('tts'); // tts | music | record | script
+  const [ttsText, setTtsText] = useState('');
+  const [ttsVoice, setTtsVoice] = useState('');
+  const [ttsVoices, setTtsVoices] = useState([]);
+  const [musicFile, setMusicFile] = useState(null);
+  const [musicVolume, setMusicVolume] = useState(50);
+  const [recordedBlob, setRecordedBlob] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [scriptTopic, setScriptTopic] = useState('');
+  const [generatedScript, setGeneratedScript] = useState('');
+  const [scriptLoading, setScriptLoading] = useState(false);
+  const [audioProcessing, setAudioProcessing] = useState(false);
+  const [audioProgress, setAudioProgress] = useState('');
+  const mediaRecorderRef = useRef(null);
+  const recordingTimerRef = useRef(null);
+  const chunksRef = useRef([]);
 
   const platformSizes = {
     instagram: { width: 1080, height: 1080, label: 'Instagram Square (1080x1080)' },
@@ -45,14 +71,25 @@ function MediaEditor() {
     linkedin: { name: 'LinkedIn Live', icon: '💼', rtmpUrl: 'rtmp://mio.linkedin.com/live', dashboardUrl: 'https://www.linkedin.com/video/live', instructions: 'LinkedIn Live requires approval first. Once approved, use any RTMP tool with your stream key.' },
   };
 
+  // Load TTS voices on mount
+  React.useEffect(() => {
+    const loadVoices = () => {
+      const v = window.speechSynthesis.getVoices();
+      if (v.length > 0) {
+        setTtsVoices(v);
+        setTtsVoice(v[0].name);
+      }
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }, []);
+
   const handleVideoUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setVideoFile(file);
     setVideoURL(URL.createObjectURL(file));
-    setTrimStart(0);
-    setTrimEnd(100);
-    setVideoProgress('');
+    setTrimStart(0); setTrimEnd(100); setVideoProgress('');
   };
 
   const handleVideoLoaded = () => {
@@ -90,77 +127,50 @@ function MediaEditor() {
       setVideoProgress('Downloading processed video...');
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'nnit-trimmed.mp4';
-      a.click();
+      const a = document.createElement('a'); a.href = url; a.download = 'nnit-trimmed.mp4'; a.click();
       URL.revokeObjectURL(url);
       setVideoProgress('Done! Video downloaded.');
     } catch (err) {
-      alert('Export failed: ' + err.message);
-      setVideoProgress('');
-    } finally {
-      setVideoProcessing(false);
-    }
+      alert('Export failed: ' + err.message); setVideoProgress('');
+    } finally { setVideoProcessing(false); }
   };
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setPhotoFile(file);
-    setPhotoURL(URL.createObjectURL(file));
-    setProcessedPhotoURL(null);
+    setPhotoFile(file); setPhotoURL(URL.createObjectURL(file)); setProcessedPhotoURL(null);
   };
 
   const processPhoto = () => {
     if (!photoURL) { alert('Please upload a photo first'); return; }
     setPhotoProcessing(true);
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
+    const canvas = canvasRef.current; const ctx = canvas.getContext('2d'); const img = new Image();
     img.onload = () => {
       const target = platformSizes[resizeTarget];
-      canvas.width = target.width;
-      canvas.height = target.height;
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      const imgAspect = img.width / img.height;
-      const canvasAspect = canvas.width / canvas.height;
+      canvas.width = target.width; canvas.height = target.height;
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const imgAspect = img.width / img.height; const canvasAspect = canvas.width / canvas.height;
       let drawW, drawH, drawX, drawY;
-      if (imgAspect > canvasAspect) {
-        drawH = canvas.height; drawW = drawH * imgAspect;
-        drawX = (canvas.width - drawW) / 2; drawY = 0;
-      } else {
-        drawW = canvas.width; drawH = drawW / imgAspect;
-        drawX = 0; drawY = (canvas.height - drawH) / 2;
-      }
+      if (imgAspect > canvasAspect) { drawH = canvas.height; drawW = drawH * imgAspect; drawX = (canvas.width - drawW) / 2; drawY = 0; }
+      else { drawW = canvas.width; drawH = drawW / imgAspect; drawX = 0; drawY = (canvas.height - drawH) / 2; }
       ctx.drawImage(img, drawX, drawY, drawW, drawH);
       if (photoText) {
         const fSize = parseInt(fontSize) * (canvas.width / 800);
-        ctx.font = 'bold ' + fSize + 'px Arial';
-        ctx.textAlign = 'center';
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.shadowBlur = 10;
+        ctx.font = 'bold ' + fSize + 'px Arial'; ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 10;
         const barHeight = fSize * 1.8;
         let barY = textPosition === 'top' ? fSize * 0.5 : textPosition === 'center' ? canvas.height / 2 - fSize : canvas.height - barHeight - 20;
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, barY, canvas.width, barHeight);
-        ctx.fillStyle = textColor;
-        ctx.shadowBlur = 0;
-        ctx.fillText(photoText, canvas.width / 2, barY + fSize * 1.2);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, barY, canvas.width, barHeight);
+        ctx.fillStyle = textColor; ctx.shadowBlur = 0; ctx.fillText(photoText, canvas.width / 2, barY + fSize * 1.2);
       }
-      setProcessedPhotoURL(canvas.toDataURL('image/jpeg', 0.92));
-      setPhotoProcessing(false);
+      setProcessedPhotoURL(canvas.toDataURL('image/jpeg', 0.92)); setPhotoProcessing(false);
     };
     img.src = photoURL;
   };
 
   const downloadPhoto = () => {
     if (!processedPhotoURL) return;
-    const a = document.createElement('a');
-    a.href = processedPhotoURL;
-    a.download = 'nnit-edited-' + resizeTarget + '.jpg';
-    a.click();
+    const a = document.createElement('a'); a.href = processedPhotoURL; a.download = 'nnit-edited-' + resizeTarget + '.jpg'; a.click();
   };
 
   const generateStreamInfo = () => {
@@ -169,8 +179,137 @@ function MediaEditor() {
     setGeneratedStream({ ...platform, title: streamTitle, generatedAt: new Date().toLocaleString() });
   };
 
+  // TTS preview
+  const previewTTS = () => {
+    if (!ttsText.trim()) { alert('Enter some text first'); return; }
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(ttsText);
+    const voice = ttsVoices.find(v => v.name === ttsVoice);
+    if (voice) utt.voice = voice;
+    window.speechSynthesis.speak(utt);
+  };
+
+  // Record voice
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunksRef.current = [];
+      const mr = new MediaRecorder(stream);
+      mediaRecorderRef.current = mr;
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        setRecordedBlob(blob);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mr.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    } catch (err) { alert('Microphone access denied: ' + err.message); }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
+    clearInterval(recordingTimerRef.current);
+    setIsRecording(false);
+  };
+
+  // Generate AI script
+  const generateScript = async () => {
+    if (!scriptTopic.trim()) { alert('Enter a topic'); return; }
+    setScriptLoading(true);
+    try {
+      const response = await fetch(API_URL + '/api/ai/video-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: scriptTopic, duration: '60 seconds', style: 'engaging' })
+      });
+      const data = await response.json();
+      if (data.script) {
+        const full = (data.script.hook || '') + '\n\n' + (data.script.sections || []).map(s => s.content).join('\n\n') + '\n\n' + (data.script.cta || '');
+        setGeneratedScript(full.trim());
+        setTtsText(full.trim());
+      }
+    } catch (err) { alert('Script generation failed: ' + err.message); }
+    finally { setScriptLoading(false); }
+  };
+
+  // Merge audio into video
+  const mergeAudioVideo = async () => {
+    if (!audioVideoFile) { alert('Please upload a video first'); return; }
+    setAudioProcessing(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('video', audioVideoFile);
+
+      if (audioMode === 'tts') {
+        if (!ttsText.trim()) { alert('Enter text for voiceover'); setAudioProcessing(false); return; }
+        // Convert TTS to audio blob using Web Speech API
+        setAudioProgress('Generating voiceover...');
+        const audioBlob = await generateTTSBlob(ttsText, ttsVoice);
+        formData.append('audio', audioBlob, 'voiceover.wav');
+        formData.append('audioType', 'voiceover');
+        formData.append('volume', '100');
+      } else if (audioMode === 'music') {
+        if (!musicFile) { alert('Please upload a music file'); setAudioProcessing(false); return; }
+        formData.append('audio', musicFile);
+        formData.append('audioType', 'music');
+        formData.append('volume', musicVolume.toString());
+      } else if (audioMode === 'record') {
+        if (!recordedBlob) { alert('Please record your voice first'); setAudioProcessing(false); return; }
+        formData.append('audio', recordedBlob, 'recording.webm');
+        formData.append('audioType', 'voiceover');
+        formData.append('volume', '100');
+      } else if (audioMode === 'script') {
+        if (!generatedScript.trim()) { alert('Please generate a script first'); setAudioProcessing(false); return; }
+        setAudioProgress('Generating voiceover from script...');
+        const audioBlob = await generateTTSBlob(generatedScript, ttsVoice);
+        formData.append('audio', audioBlob, 'script-voice.wav');
+        formData.append('audioType', 'voiceover');
+        formData.append('volume', '100');
+      }
+
+      setAudioProgress('Merging audio with video on server...');
+      const response = await fetch(API_URL + '/api/media/merge-audio', { method: 'POST', body: formData });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Server error' }));
+        throw new Error(err.error || 'Server error ' + response.status);
+      }
+      setAudioProgress('Downloading merged video...');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'nnit-with-audio.mp4'; a.click();
+      URL.revokeObjectURL(url);
+      setAudioProgress('Done! Video with audio downloaded.');
+    } catch (err) {
+      alert('Merge failed: ' + err.message); setAudioProgress('');
+    } finally { setAudioProcessing(false); }
+  };
+
+  // Convert TTS to audio blob using Web Speech + MediaRecorder
+  const generateTTSBlob = (text, voiceName) => {
+    return new Promise((resolve, reject) => {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const destination = audioCtx.createMediaStreamDestination();
+      const recorder = new MediaRecorder(destination.stream);
+      const chunks = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => resolve(new Blob(chunks, { type: 'audio/webm' }));
+      recorder.start();
+      const utt = new SpeechSynthesisUtterance(text);
+      const voice = ttsVoices.find(v => v.name === voiceName);
+      if (voice) utt.voice = voice;
+      utt.onend = () => { setTimeout(() => recorder.stop(), 500); };
+      utt.onerror = reject;
+      window.speechSynthesis.speak(utt);
+    });
+  };
+
   const tabs = [
     { id: 'video', label: '🎬 Video Editor' },
+    { id: 'audio', label: '🎵 Audio & Voice' },
     { id: 'photo', label: '📸 Photo Editor' },
     { id: 'live', label: '🔴 Live Stream' },
   ];
@@ -178,7 +317,7 @@ function MediaEditor() {
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>Media Editor</h1>
-      <p style={styles.subtitle}>Edit videos, photos and set up live streams</p>
+      <p style={styles.subtitle}>Edit videos, add voice/music, edit photos and set up live streams</p>
       <div style={styles.tabs}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -188,15 +327,14 @@ function MediaEditor() {
         ))}
       </div>
 
+      {/* VIDEO EDITOR */}
       {activeTab === 'video' && (
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>🎬 Video Editor</h2>
           <p style={styles.description}>Trim your video and add captions overlay</p>
           <div style={styles.uploadArea}>
             <input type="file" accept="video/*" onChange={handleVideoUpload} style={{ display: 'none' }} id="videoUpload" />
-            <label htmlFor="videoUpload" style={styles.uploadLabel}>
-              {videoFile ? '📹 ' + videoFile.name : '📁 Click to upload video'}
-            </label>
+            <label htmlFor="videoUpload" style={styles.uploadLabel}>{videoFile ? '📹 ' + videoFile.name : '📁 Click to upload video'}</label>
           </div>
           {videoURL && (
             <div style={styles.videoSection}>
@@ -222,14 +360,10 @@ function MediaEditor() {
                 <input type="text" placeholder="Enter caption text..." value={videoCaption}
                   onChange={e => setVideoCaption(e.target.value)} style={styles.input} />
                 <select value={captionPosition} onChange={e => setCaptionPosition(e.target.value)} style={styles.select}>
-                  <option value="top">Top</option>
-                  <option value="center">Center</option>
-                  <option value="bottom">Bottom</option>
+                  <option value="top">Top</option><option value="center">Center</option><option value="bottom">Bottom</option>
                 </select>
               </div>
-              {videoProgress && (
-                <div style={styles.progressBox}>⏳ {videoProgress}</div>
-              )}
+              {videoProgress && <div style={styles.progressBox}>⏳ {videoProgress}</div>}
               <button onClick={exportVideo} disabled={videoProcessing} style={styles.primaryButton}>
                 {videoProcessing ? '⏳ Processing...' : '⬇️ Export Video'}
               </button>
@@ -238,15 +372,126 @@ function MediaEditor() {
         </div>
       )}
 
+      {/* AUDIO & VOICE */}
+      {activeTab === 'audio' && (
+        <div style={styles.card}>
+          <h2 style={styles.cardTitle}>🎵 Audio & Voice</h2>
+          <p style={styles.description}>Add AI voiceover, background music, or recorded voice to your video</p>
+
+          <div style={styles.uploadArea}>
+            <input type="file" accept="video/*" onChange={e => setAudioVideoFile(e.target.files[0])} style={{ display: 'none' }} id="audioVideoUpload" />
+            <label htmlFor="audioVideoUpload" style={styles.uploadLabel}>
+              {audioVideoFile ? '📹 ' + audioVideoFile.name : '📁 Upload video to add audio to'}
+            </label>
+          </div>
+
+          <div style={styles.audioModeGrid}>
+            {[['tts','🗣️','AI Voiceover'],['music','🎵','Background Music'],['record','🎤','Record Voice'],['script','🤖','AI Script']].map(([mode, icon, label]) => (
+              <button key={mode} onClick={() => setAudioMode(mode)}
+                style={{ ...styles.platformCard, ...(audioMode === mode ? styles.platformCardActive : {}) }}>
+                <span style={{ fontSize: '28px' }}>{icon}</span>
+                <span style={{ fontSize: '13px', fontWeight: '600' }}>{label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* TTS */}
+          {audioMode === 'tts' && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>🗣️ AI Voiceover (Text to Speech)</h3>
+              <textarea placeholder="Type the text you want spoken over the video..." value={ttsText}
+                onChange={e => setTtsText(e.target.value)} style={{ ...styles.input, height: '100px', resize: 'vertical' }} />
+              {ttsVoices.length > 0 && (
+                <select value={ttsVoice} onChange={e => setTtsVoice(e.target.value)} style={styles.select}>
+                  {ttsVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+                </select>
+              )}
+              <button onClick={previewTTS} style={styles.secondaryButton}>▶️ Preview Voice</button>
+            </div>
+          )}
+
+          {/* MUSIC */}
+          {audioMode === 'music' && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>🎵 Background Music</h3>
+              <input type="file" accept="audio/*" onChange={e => setMusicFile(e.target.files[0])} style={{ display: 'none' }} id="musicUpload" />
+              <label htmlFor="musicUpload" style={styles.uploadLabel}>
+                {musicFile ? '🎵 ' + musicFile.name : '📁 Upload music file (MP3, WAV, etc.)'}
+              </label>
+              <div style={{ marginTop: '12px' }}>
+                <label style={styles.label}>Music Volume: {musicVolume}%</label>
+                <input type="range" min="10" max="100" value={musicVolume}
+                  onChange={e => setMusicVolume(e.target.value)} style={styles.slider} />
+              </div>
+            </div>
+          )}
+
+          {/* RECORD */}
+          {audioMode === 'record' && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>🎤 Record Your Voice</h3>
+              <p style={styles.hint}>Allow microphone access when prompted</p>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+                {!isRecording ? (
+                  <button onClick={startRecording} style={{ ...styles.primaryButton, backgroundColor: '#e53e3e' }}>
+                    🔴 Start Recording
+                  </button>
+                ) : (
+                  <button onClick={stopRecording} style={{ ...styles.secondaryButton, border: '2px solid #e53e3e', color: '#e53e3e' }}>
+                    ⏹️ Stop Recording ({recordingTime}s)
+                  </button>
+                )}
+              </div>
+              {recordedBlob && (
+                <div>
+                  <p style={styles.hint}>Recording ready! Preview:</p>
+                  <audio controls src={URL.createObjectURL(recordedBlob)} style={{ width: '100%' }} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* AI SCRIPT */}
+          {audioMode === 'script' && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>🤖 AI Script Generator</h3>
+              <input type="text" placeholder="Topic (e.g. 'How to grow on Instagram')" value={scriptTopic}
+                onChange={e => setScriptTopic(e.target.value)} style={styles.input} />
+              <button onClick={generateScript} disabled={scriptLoading} style={styles.secondaryButton}>
+                {scriptLoading ? '⏳ Generating...' : '🤖 Generate Script'}
+              </button>
+              {generatedScript && (
+                <div style={{ marginTop: '12px' }}>
+                  <textarea value={generatedScript} onChange={e => setGeneratedScript(e.target.value)}
+                    style={{ ...styles.input, height: '150px', resize: 'vertical', marginTop: '8px' }} />
+                  <p style={styles.hint}>Script will be read as voiceover. You can edit it above.</p>
+                  {ttsVoices.length > 0 && (
+                    <select value={ttsVoice} onChange={e => setTtsVoice(e.target.value)} style={styles.select}>
+                      {ttsVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+                    </select>
+                  )}
+                  <button onClick={() => { setTtsText(generatedScript); previewTTS(); }} style={styles.secondaryButton}>▶️ Preview Voice</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {audioProgress && <div style={{ ...styles.progressBox, marginTop: '16px' }}>⏳ {audioProgress}</div>}
+
+          <button onClick={mergeAudioVideo} disabled={audioProcessing || !audioVideoFile} style={{ ...styles.primaryButton, marginTop: '16px' }}>
+            {audioProcessing ? '⏳ Processing...' : '🎬 Merge Audio into Video'}
+          </button>
+        </div>
+      )}
+
+      {/* PHOTO EDITOR */}
       {activeTab === 'photo' && (
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>📸 Photo Editor</h2>
           <p style={styles.description}>Resize for any platform and add text overlay</p>
           <div style={styles.uploadArea}>
             <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} id="photoUpload" />
-            <label htmlFor="photoUpload" style={styles.uploadLabel}>
-              {photoFile ? '🖼️ ' + photoFile.name : '📁 Click to upload photo'}
-            </label>
+            <label htmlFor="photoUpload" style={styles.uploadLabel}>{photoFile ? '🖼️ ' + photoFile.name : '📁 Click to upload photo'}</label>
           </div>
           {photoURL && (
             <div style={styles.photoSection}>
@@ -290,6 +535,7 @@ function MediaEditor() {
         </div>
       )}
 
+      {/* LIVE STREAM */}
       {activeTab === 'live' && (
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>🔴 Live Stream Setup</h2>
@@ -319,8 +565,7 @@ function MediaEditor() {
                 </div>
                 <div style={styles.streamField}>
                   <span style={styles.streamLabel}>Stream Key</span>
-                  <div style={styles.streamValue}>
-                    Get from your platform dashboard →{' '}
+                  <div style={styles.streamValue}>Get from your platform dashboard →{' '}
                     <a href={generatedStream.dashboardUrl} target="_blank" rel="noreferrer" style={{ color: '#667eea' }}>Open Dashboard</a>
                   </div>
                 </div>
@@ -332,11 +577,8 @@ function MediaEditor() {
               <div style={styles.obsBox}>
                 <strong>🎮 OBS Settings:</strong>
                 <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4a5568', lineHeight: '1.7' }}>
-                  1. Open OBS → Settings → Stream<br />
-                  2. Service: Custom<br />
-                  3. Server: {generatedStream.rtmpUrl}<br />
-                  4. Stream Key: (from platform dashboard)<br />
-                  5. Click Apply → Start Streaming
+                  1. Open OBS → Settings → Stream<br />2. Service: Custom<br />
+                  3. Server: {generatedStream.rtmpUrl}<br />4. Stream Key: (from platform dashboard)<br />5. Click Apply → Start Streaming
                 </p>
               </div>
             </div>
@@ -372,6 +614,7 @@ const styles = {
   primaryButton: { padding: '14px 28px', background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '600' },
   secondaryButton: { padding: '12px 24px', backgroundColor: '#f7fafc', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
   progressBox: { padding: '12px 16px', backgroundColor: '#ebf8ff', borderRadius: '8px', fontSize: '14px', color: '#2b6cb0', border: '1px solid #bee3f8' },
+  audioModeGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' },
   photoSection: { display: 'flex', flexDirection: 'column', gap: '20px' },
   photoPreviewRow: { display: 'flex', gap: '20px', flexWrap: 'wrap' },
   photoPreview: { maxWidth: '300px', maxHeight: '250px', borderRadius: '8px', objectFit: 'contain', border: '1px solid #e2e8f0' },
