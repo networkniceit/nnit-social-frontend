@@ -285,7 +285,7 @@ function MediaEditor() {
         formData.append('volume', '100');
       }
       setAudioProgress('Merging audio with video on server...');
-      const response = await fetch(API_URL + '/api/media/merge-audio', { method: 'POST', body: formData });
+      const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 300000); const response = await fetch(API_URL + '/api/media/merge-audio', { method: 'POST', body: formData, signal: controller.signal }); clearTimeout(timeoutId);
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: 'Server error' }));
         throw new Error(err.error || 'Server error ' + response.status);
