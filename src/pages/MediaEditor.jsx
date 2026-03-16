@@ -405,7 +405,7 @@ function MediaEditor() {
           {audioMode === 'music' && (
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>🎵 Background Music</h3>
-              <input type="file" accept="audio/*" onChange={e => setMusicFile(e.target.files[0])} style={{ display: 'none' }} id="musicUpload" />
+              <input type="file" accept="audio/*" onChange={e => { const f = e.target.files[0]; if (f && f.size > 10 * 1024 * 1024) { alert('Music file too large. Please use a file under 10MB.'); return; } setMusicFile(f); }} style={{ display: 'none' }} id="musicUpload" />
               <label htmlFor="musicUpload" style={styles.uploadLabel}>
                 {musicFile ? '🎵 ' + musicFile.name : '📁 Upload music file (MP3, WAV, etc.)'}
               </label>
