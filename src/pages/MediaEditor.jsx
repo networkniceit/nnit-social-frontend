@@ -36,10 +36,11 @@ function MediaEditor() {
 
   // Audio/Voice state
   const [audioVideoFile, setAudioVideoFile] = useState(null);
-  const [audioMode, setAudioMode] = useState('tts'); // tts | music | record | script
+  const [audioMode, setAudioMode] = useState('tts');
   const [ttsText, setTtsText] = useState('');
-  const [ttsVoice, setTtsVoice] = useState('');
+  const [ttsLang, setTtsLang] = useState('en');
   const [ttsVoices, setTtsVoices] = useState([]);
+  const [ttsVoice, setTtsVoice] = useState('');
   const [musicFile, setMusicFile] = useState(null);
   const [musicVolume, setMusicVolume] = useState(50);
   const [recordedBlob, setRecordedBlob] = useState(null);
@@ -64,21 +65,30 @@ function MediaEditor() {
   };
 
   const streamPlatforms = {
-    youtube: { name: 'YouTube Live', icon: 'â–¶ï¸', rtmpUrl: 'rtmp://a.rtmp.youtube.com/live2', dashboardUrl: 'https://studio.youtube.com', instructions: 'Go to YouTube Studio â†’ Go Live â†’ Stream. Copy the stream key and paste it into OBS or Streamlabs.' },
-    facebook: { name: 'Facebook Live', icon: 'ðŸ“˜', rtmpUrl: 'rtmps://live-api-s.facebook.com:443/rtmp', dashboardUrl: 'https://www.facebook.com/live/producer', instructions: 'Go to Facebook Live Producer â†’ Create Live Video. Copy the stream key and use it with OBS.' },
-    instagram: { name: 'Instagram Live', icon: 'ðŸ“¸', rtmpUrl: 'rtmps://edgetee-upload-{dc}.facebook.com:443/rtmp', dashboardUrl: 'https://www.instagram.com', instructions: 'Instagram Live from the app: tap + â†’ Live. For desktop use Yellow Duck.' },
-    tiktok: { name: 'TikTok Live', icon: 'ðŸŽµ', rtmpUrl: 'rtmp://push.tiktokv.com/live', dashboardUrl: 'https://www.tiktok.com/live/studio', instructions: 'Open TikTok â†’ + â†’ LIVE. Need 1000+ followers. For desktop use TikTok Live Studio.' },
-    linkedin: { name: 'LinkedIn Live', icon: 'ðŸ’¼', rtmpUrl: 'rtmp://mio.linkedin.com/live', dashboardUrl: 'https://www.linkedin.com/video/live', instructions: 'LinkedIn Live requires approval first. Once approved, use any RTMP tool with your stream key.' },
+    youtube: { name: 'YouTube Live', icon: '▶️', rtmpUrl: 'rtmp://a.rtmp.youtube.com/live2', dashboardUrl: 'https://studio.youtube.com', instructions: 'Go to YouTube Studio → Go Live → Stream. Copy the stream key and paste it into OBS or Streamlabs.' },
+    facebook: { name: 'Facebook Live', icon: '📘', rtmpUrl: 'rtmps://live-api-s.facebook.com:443/rtmp', dashboardUrl: 'https://www.facebook.com/live/producer', instructions: 'Go to Facebook Live Producer → Create Live Video. Copy the stream key and use it with OBS.' },
+    instagram: { name: 'Instagram Live', icon: '📸', rtmpUrl: 'rtmps://edgetee-upload-{dc}.facebook.com:443/rtmp', dashboardUrl: 'https://www.instagram.com', instructions: 'Instagram Live from the app: tap + → Live. For desktop use Yellow Duck.' },
+    tiktok: { name: 'TikTok Live', icon: '🎵', rtmpUrl: 'rtmp://push.tiktokv.com/live', dashboardUrl: 'https://www.tiktok.com/live/studio', instructions: 'Open TikTok → + → LIVE. Need 1000+ followers. For desktop use TikTok Live Studio.' },
+    linkedin: { name: 'LinkedIn Live', icon: '💼', rtmpUrl: 'rtmp://mio.linkedin.com/live', dashboardUrl: 'https://www.linkedin.com/video/live', instructions: 'LinkedIn Live requires approval first. Once approved, use any RTMP tool with your stream key.' },
   };
 
-  // Load TTS voices on mount
+  const ttsLanguages = [
+    { code: 'en', label: 'English' },
+    { code: 'de', label: 'German' },
+    { code: 'fr', label: 'French' },
+    { code: 'es', label: 'Spanish' },
+    { code: 'it', label: 'Italian' },
+    { code: 'pt', label: 'Portuguese' },
+    { code: 'nl', label: 'Dutch' },
+    { code: 'ru', label: 'Russian' },
+    { code: 'ja', label: 'Japanese' },
+    { code: 'zh', label: 'Chinese' },
+  ];
+
   React.useEffect(() => {
     const loadVoices = () => {
       const v = window.speechSynthesis.getVoices();
-      if (v.length > 0) {
-        setTtsVoices(v);
-        setTtsVoice(v[0].name);
-      }
+      if (v.length > 0) { setTtsVoices(v); setTtsVoice(v[0].name); }
     };
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
@@ -179,17 +189,16 @@ function MediaEditor() {
     setGeneratedStream({ ...platform, title: streamTitle, generatedAt: new Date().toLocaleString() });
   };
 
-  // TTS preview
   const previewTTS = () => {
-    if (!ttsText.trim()) { alert('Enter some text first'); return; }
+    const text = audioMode === 'script' ? generatedScript : ttsText;
+    if (!text.trim()) { alert('Enter some text first'); return; }
     window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(ttsText);
+    const utt = new SpeechSynthesisUtterance(text);
     const voice = ttsVoices.find(v => v.name === ttsVoice);
     if (voice) utt.voice = voice;
     window.speechSynthesis.speak(utt);
   };
 
-  // Record voice
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -215,7 +224,6 @@ function MediaEditor() {
     setIsRecording(false);
   };
 
-  // Generate AI script
   const generateScript = async () => {
     if (!scriptTopic.trim()) { alert('Enter a topic'); return; }
     setScriptLoading(true);
@@ -229,30 +237,43 @@ function MediaEditor() {
       if (data.script) {
         const full = (data.script.hook || '') + '\n\n' + (data.script.sections || []).map(s => s.content).join('\n\n') + '\n\n' + (data.script.cta || '');
         setGeneratedScript(full.trim());
-        setTtsText(full.trim());
       }
     } catch (err) { alert('Script generation failed: ' + err.message); }
     finally { setScriptLoading(false); }
   };
 
-  // Merge audio into video
   const mergeAudioVideo = async () => {
     if (!audioVideoFile) { alert('Please upload a video first'); return; }
     setAudioProcessing(true);
-
+    setAudioProgress('Preparing...');
     try {
+      // TTS — use backend Google TTS
+      if (audioMode === 'tts' || audioMode === 'script') {
+        const text = audioMode === 'script' ? generatedScript : ttsText;
+        if (!text.trim()) { alert('Enter text or generate a script first'); setAudioProcessing(false); return; }
+        setAudioProgress('Generating AI voiceover on server...');
+        const formData = new FormData();
+        formData.append('video', audioVideoFile);
+        formData.append('text', text);
+        formData.append('lang', ttsLang);
+        const response = await fetch(API_URL + '/api/media/tts-merge', { method: 'POST', body: formData });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ error: 'Server error' }));
+          throw new Error(err.error || 'Server error ' + response.status);
+        }
+        setAudioProgress('Downloading video with voiceover...');
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'nnit-voiceover.mp4'; a.click();
+        URL.revokeObjectURL(url);
+        setAudioProgress('Done! Video with AI voiceover downloaded.');
+        return;
+      }
+
+      // Music or recorded voice — use merge-audio
       const formData = new FormData();
       formData.append('video', audioVideoFile);
-
-      if (audioMode === 'tts') {
-        if (!ttsText.trim()) { alert('Enter text for voiceover'); setAudioProcessing(false); return; }
-        // Convert TTS to audio blob using Web Speech API
-        setAudioProgress('Generating voiceover...');
-        const audioBlob = await generateTTSBlob(ttsText, ttsVoice);
-        formData.append('audio', audioBlob, 'voiceover.webm');
-        formData.append('audioType', 'voiceover');
-        formData.append('volume', '100');
-      } else if (audioMode === 'music') {
+      if (audioMode === 'music') {
         if (!musicFile) { alert('Please upload a music file'); setAudioProcessing(false); return; }
         formData.append('audio', musicFile);
         formData.append('audioType', 'music');
@@ -262,15 +283,7 @@ function MediaEditor() {
         formData.append('audio', recordedBlob, 'recording.webm');
         formData.append('audioType', 'voiceover');
         formData.append('volume', '100');
-      } else if (audioMode === 'script') {
-        if (!generatedScript.trim()) { alert('Please generate a script first'); setAudioProcessing(false); return; }
-        setAudioProgress('Generating voiceover from script...');
-        const audioBlob = await generateTTSBlob(generatedScript, ttsVoice);
-        formData.append('audio', audioBlob, 'script-voice.webm');
-        formData.append('audioType', 'voiceover');
-        formData.append('volume', '100');
       }
-
       setAudioProgress('Merging audio with video on server...');
       const response = await fetch(API_URL + '/api/media/merge-audio', { method: 'POST', body: formData });
       if (!response.ok) {
@@ -288,30 +301,11 @@ function MediaEditor() {
     } finally { setAudioProcessing(false); }
   };
 
-  // Convert TTS to audio blob using Web Speech + MediaRecorder
-  const generateTTSBlob = (text, voiceName) => {
-    return new Promise((resolve, reject) => {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const destination = audioCtx.createMediaStreamDestination();
-      const recorder = new MediaRecorder(destination.stream);
-      const chunks = [];
-      recorder.ondataavailable = e => chunks.push(e.data);
-      recorder.onstop = () => resolve(new Blob(chunks, { type: 'audio/webm' }));
-      recorder.start();
-      const utt = new SpeechSynthesisUtterance(text);
-      const voice = ttsVoices.find(v => v.name === voiceName);
-      if (voice) utt.voice = voice;
-      utt.onend = () => { setTimeout(() => recorder.stop(), 500); };
-      utt.onerror = reject;
-      window.speechSynthesis.speak(utt);
-    });
-  };
-
   const tabs = [
-    { id: 'video', label: 'ðŸŽ¬ Video Editor' },
-    { id: 'audio', label: 'ðŸŽµ Audio & Voice' },
-    { id: 'photo', label: 'ðŸ“¸ Photo Editor' },
-    { id: 'live', label: 'ðŸ”´ Live Stream' },
+    { id: 'video', label: '🎬 Video Editor' },
+    { id: 'audio', label: '🎵 Audio & Voice' },
+    { id: 'photo', label: '📸 Photo Editor' },
+    { id: 'live', label: '🔴 Live Stream' },
   ];
 
   return (
@@ -330,17 +324,17 @@ function MediaEditor() {
       {/* VIDEO EDITOR */}
       {activeTab === 'video' && (
         <div style={styles.card}>
-          <h2 style={styles.cardTitle}>ðŸŽ¬ Video Editor</h2>
+          <h2 style={styles.cardTitle}>🎬 Video Editor</h2>
           <p style={styles.description}>Trim your video and add captions overlay</p>
           <div style={styles.uploadArea}>
             <input type="file" accept="video/*" onChange={handleVideoUpload} style={{ display: 'none' }} id="videoUpload" />
-            <label htmlFor="videoUpload" style={styles.uploadLabel}>{videoFile ? 'ðŸ“¹ ' + videoFile.name : 'ðŸ“ Click to upload video'}</label>
+            <label htmlFor="videoUpload" style={styles.uploadLabel}>{videoFile ? '📹 ' + videoFile.name : '📁 Click to upload video'}</label>
           </div>
           {videoURL && (
             <div style={styles.videoSection}>
               <video ref={videoRef} src={videoURL} controls style={styles.videoPreview} onLoadedMetadata={handleVideoLoaded} />
               <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>âœ‚ï¸ Trim Video</h3>
+                <h3 style={styles.sectionTitle}>✂️ Trim Video</h3>
                 <p style={styles.hint}>Duration: {videoDuration.toFixed(1)}s</p>
                 <div style={styles.trimRow}>
                   <label style={styles.label}>Start: {trimStart.toFixed(1)}s</label>
@@ -353,19 +347,19 @@ function MediaEditor() {
                     onChange={e => setTrimEnd(Math.max(parseFloat(e.target.value), trimStart + 0.5))} style={styles.slider} />
                 </div>
                 <p style={styles.hint}>Selected: {(trimEnd - trimStart).toFixed(1)} seconds</p>
-                <button onClick={previewTrim} style={styles.secondaryButton}>â–¶ï¸ Preview Trim</button>
+                <button onClick={previewTrim} style={styles.secondaryButton}>▶️ Preview Trim</button>
               </div>
               <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>ðŸ’¬ Add Caption Overlay</h3>
+                <h3 style={styles.sectionTitle}>💬 Add Caption Overlay</h3>
                 <input type="text" placeholder="Enter caption text..." value={videoCaption}
                   onChange={e => setVideoCaption(e.target.value)} style={styles.input} />
                 <select value={captionPosition} onChange={e => setCaptionPosition(e.target.value)} style={styles.select}>
                   <option value="top">Top</option><option value="center">Center</option><option value="bottom">Bottom</option>
                 </select>
               </div>
-              {videoProgress && <div style={styles.progressBox}>â³ {videoProgress}</div>}
+              {videoProgress && <div style={styles.progressBox}>⏳ {videoProgress}</div>}
               <button onClick={exportVideo} disabled={videoProcessing} style={styles.primaryButton}>
-                {videoProcessing ? 'â³ Processing...' : 'â¬‡ï¸ Export Video'}
+                {videoProcessing ? '⏳ Processing...' : '⬇️ Export Video'}
               </button>
             </div>
           )}
@@ -375,18 +369,16 @@ function MediaEditor() {
       {/* AUDIO & VOICE */}
       {activeTab === 'audio' && (
         <div style={styles.card}>
-          <h2 style={styles.cardTitle}>ðŸŽµ Audio & Voice</h2>
+          <h2 style={styles.cardTitle}>🎵 Audio & Voice</h2>
           <p style={styles.description}>Add AI voiceover, background music, or recorded voice to your video</p>
-
           <div style={styles.uploadArea}>
             <input type="file" accept="video/*" onChange={e => setAudioVideoFile(e.target.files[0])} style={{ display: 'none' }} id="audioVideoUpload" />
             <label htmlFor="audioVideoUpload" style={styles.uploadLabel}>
-              {audioVideoFile ? 'ðŸ“¹ ' + audioVideoFile.name : 'ðŸ“ Upload video to add audio to'}
+              {audioVideoFile ? '📹 ' + audioVideoFile.name : '📁 Upload video to add audio to'}
             </label>
           </div>
-
           <div style={styles.audioModeGrid}>
-            {[['tts','ðŸ—£ï¸','AI Voiceover'],['music','ðŸŽµ','Background Music'],['record','ðŸŽ¤','Record Voice'],['script','ðŸ¤–','AI Script']].map(([mode, icon, label]) => (
+            {[['tts','🗣️','AI Voiceover'],['music','🎵','Background Music'],['record','🎤','Record Voice'],['script','🤖','AI Script']].map(([mode, icon, label]) => (
               <button key={mode} onClick={() => setAudioMode(mode)}
                 style={{ ...styles.platformCard, ...(audioMode === mode ? styles.platformCardActive : {}) }}>
                 <span style={{ fontSize: '28px' }}>{icon}</span>
@@ -398,25 +390,24 @@ function MediaEditor() {
           {/* TTS */}
           {audioMode === 'tts' && (
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>ðŸ—£ï¸ AI Voiceover (Text to Speech)</h3>
+              <h3 style={styles.sectionTitle}>🗣️ AI Voiceover (Google Text to Speech)</h3>
+              <p style={styles.hint}>Text is converted to speech on the server and merged into your video</p>
               <textarea placeholder="Type the text you want spoken over the video..." value={ttsText}
-                onChange={e => setTtsText(e.target.value)} style={{ ...styles.input, height: '100px', resize: 'vertical' }} />
-              {ttsVoices.length > 0 && (
-                <select value={ttsVoice} onChange={e => setTtsVoice(e.target.value)} style={styles.select}>
-                  {ttsVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
-                </select>
-              )}
-              <button onClick={previewTTS} style={styles.secondaryButton}>â–¶ï¸ Preview Voice</button>
+                onChange={e => setTtsText(e.target.value)} style={{ ...styles.input, height: '120px', resize: 'vertical' }} />
+              <select value={ttsLang} onChange={e => setTtsLang(e.target.value)} style={styles.select}>
+                {ttsLanguages.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+              </select>
+              <button onClick={previewTTS} style={styles.secondaryButton}>▶️ Preview Voice (Browser)</button>
             </div>
           )}
 
           {/* MUSIC */}
           {audioMode === 'music' && (
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>ðŸŽµ Background Music</h3>
+              <h3 style={styles.sectionTitle}>🎵 Background Music</h3>
               <input type="file" accept="audio/*" onChange={e => setMusicFile(e.target.files[0])} style={{ display: 'none' }} id="musicUpload" />
               <label htmlFor="musicUpload" style={styles.uploadLabel}>
-                {musicFile ? 'ðŸŽµ ' + musicFile.name : 'ðŸ“ Upload music file (MP3, WAV, etc.)'}
+                {musicFile ? '🎵 ' + musicFile.name : '📁 Upload music file (MP3, WAV, etc.)'}
               </label>
               <div style={{ marginTop: '12px' }}>
                 <label style={styles.label}>Music Volume: {musicVolume}%</label>
@@ -429,16 +420,16 @@ function MediaEditor() {
           {/* RECORD */}
           {audioMode === 'record' && (
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>ðŸŽ¤ Record Your Voice</h3>
+              <h3 style={styles.sectionTitle}>🎤 Record Your Voice</h3>
               <p style={styles.hint}>Allow microphone access when prompted</p>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
                 {!isRecording ? (
-                  <button onClick={startRecording} style={{ ...styles.primaryButton, backgroundColor: '#e53e3e' }}>
-                    ðŸ”´ Start Recording
+                  <button onClick={startRecording} style={{ ...styles.primaryButton, background: '#e53e3e' }}>
+                    🔴 Start Recording
                   </button>
                 ) : (
                   <button onClick={stopRecording} style={{ ...styles.secondaryButton, border: '2px solid #e53e3e', color: '#e53e3e' }}>
-                    â¹ï¸ Stop Recording ({recordingTime}s)
+                    ⏹️ Stop Recording ({recordingTime}s)
                   </button>
                 )}
               </div>
@@ -454,32 +445,29 @@ function MediaEditor() {
           {/* AI SCRIPT */}
           {audioMode === 'script' && (
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>ðŸ¤– AI Script Generator</h3>
-              <input type="text" placeholder="Topic (e.g. 'How to grow on Instagram')" value={scriptTopic}
+              <h3 style={styles.sectionTitle}>🤖 AI Script + Voiceover</h3>
+              <p style={styles.hint}>AI generates a script then reads it as voiceover on your video</p>
+              <input type="text" placeholder="Topic (e.g. How to grow on Instagram)" value={scriptTopic}
                 onChange={e => setScriptTopic(e.target.value)} style={styles.input} />
               <button onClick={generateScript} disabled={scriptLoading} style={styles.secondaryButton}>
-                {scriptLoading ? 'â³ Generating...' : 'ðŸ¤– Generate Script'}
+                {scriptLoading ? '⏳ Generating...' : '🤖 Generate Script'}
               </button>
               {generatedScript && (
                 <div style={{ marginTop: '12px' }}>
                   <textarea value={generatedScript} onChange={e => setGeneratedScript(e.target.value)}
                     style={{ ...styles.input, height: '150px', resize: 'vertical', marginTop: '8px' }} />
-                  <p style={styles.hint}>Script will be read as voiceover. You can edit it above.</p>
-                  {ttsVoices.length > 0 && (
-                    <select value={ttsVoice} onChange={e => setTtsVoice(e.target.value)} style={styles.select}>
-                      {ttsVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
-                    </select>
-                  )}
-                  <button onClick={() => { setTtsText(generatedScript); previewTTS(); }} style={styles.secondaryButton}>â–¶ï¸ Preview Voice</button>
+                  <select value={ttsLang} onChange={e => setTtsLang(e.target.value)} style={styles.select}>
+                    {ttsLanguages.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+                  </select>
+                  <button onClick={previewTTS} style={styles.secondaryButton}>▶️ Preview Voice</button>
                 </div>
               )}
             </div>
           )}
 
-          {audioProgress && <div style={{ ...styles.progressBox, marginTop: '16px' }}>â³ {audioProgress}</div>}
-
+          {audioProgress && <div style={{ ...styles.progressBox, marginTop: '16px' }}>⏳ {audioProgress}</div>}
           <button onClick={mergeAudioVideo} disabled={audioProcessing || !audioVideoFile} style={{ ...styles.primaryButton, marginTop: '16px' }}>
-            {audioProcessing ? 'â³ Processing...' : 'ðŸŽ¬ Merge Audio into Video'}
+            {audioProcessing ? '⏳ Processing...' : '🎬 Merge Audio into Video'}
           </button>
         </div>
       )}
@@ -487,11 +475,11 @@ function MediaEditor() {
       {/* PHOTO EDITOR */}
       {activeTab === 'photo' && (
         <div style={styles.card}>
-          <h2 style={styles.cardTitle}>ðŸ“¸ Photo Editor</h2>
+          <h2 style={styles.cardTitle}>📸 Photo Editor</h2>
           <p style={styles.description}>Resize for any platform and add text overlay</p>
           <div style={styles.uploadArea}>
             <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} id="photoUpload" />
-            <label htmlFor="photoUpload" style={styles.uploadLabel}>{photoFile ? 'ðŸ–¼ï¸ ' + photoFile.name : 'ðŸ“ Click to upload photo'}</label>
+            <label htmlFor="photoUpload" style={styles.uploadLabel}>{photoFile ? '🖼️ ' + photoFile.name : '📁 Click to upload photo'}</label>
           </div>
           {photoURL && (
             <div style={styles.photoSection}>
@@ -501,13 +489,13 @@ function MediaEditor() {
               </div>
               <canvas ref={canvasRef} style={{ display: 'none' }} />
               <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>ðŸ“ Resize for Platform</h3>
+                <h3 style={styles.sectionTitle}>📐 Resize for Platform</h3>
                 <select value={resizeTarget} onChange={e => setResizeTarget(e.target.value)} style={styles.select}>
                   {Object.entries(platformSizes).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}
                 </select>
               </div>
               <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>âœï¸ Add Text Overlay</h3>
+                <h3 style={styles.sectionTitle}>✏️ Add Text Overlay</h3>
                 <input type="text" placeholder="Enter text to overlay..." value={photoText}
                   onChange={e => setPhotoText(e.target.value)} style={styles.input} />
                 <div style={styles.row}>
@@ -526,9 +514,9 @@ function MediaEditor() {
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button onClick={processPhoto} disabled={photoProcessing} style={styles.primaryButton}>
-                  {photoProcessing ? 'â³ Processing...' : 'âš™ï¸ Process Photo'}
+                  {photoProcessing ? '⏳ Processing...' : '⚙️ Process Photo'}
                 </button>
-                {processedPhotoURL && <button onClick={downloadPhoto} style={styles.secondaryButton}>â¬‡ï¸ Download</button>}
+                {processedPhotoURL && <button onClick={downloadPhoto} style={styles.secondaryButton}>⬇️ Download</button>}
               </div>
             </div>
           )}
@@ -538,7 +526,7 @@ function MediaEditor() {
       {/* LIVE STREAM */}
       {activeTab === 'live' && (
         <div style={styles.card}>
-          <h2 style={styles.cardTitle}>ðŸ”´ Live Stream Setup</h2>
+          <h2 style={styles.cardTitle}>🔴 Live Stream Setup</h2>
           <p style={styles.description}>Generate stream info and get setup instructions for each platform</p>
           <div style={styles.form}>
             <input type="text" placeholder="Stream title (e.g. Product Launch Live)" value={streamTitle}
@@ -552,11 +540,11 @@ function MediaEditor() {
                 </button>
               ))}
             </div>
-            <button onClick={generateStreamInfo} style={styles.primaryButton}>ðŸ”´ Generate Stream Info</button>
+            <button onClick={generateStreamInfo} style={styles.primaryButton}>🔴 Generate Stream Info</button>
           </div>
           {generatedStream && (
             <div style={styles.streamResult}>
-              <h3 style={styles.sectionTitle}>{generatedStream.icon} {generatedStream.name} â€” Ready to Stream</h3>
+              <h3 style={styles.sectionTitle}>{generatedStream.icon} {generatedStream.name} — Ready to Stream</h3>
               <p style={styles.hint}>Title: {generatedStream.title}</p>
               <div style={styles.streamBox}>
                 <div style={styles.streamField}>
@@ -565,20 +553,20 @@ function MediaEditor() {
                 </div>
                 <div style={styles.streamField}>
                   <span style={styles.streamLabel}>Stream Key</span>
-                  <div style={styles.streamValue}>Get from your platform dashboard â†’{' '}
+                  <div style={styles.streamValue}>Get from your platform dashboard →{' '}
                     <a href={generatedStream.dashboardUrl} target="_blank" rel="noreferrer" style={{ color: '#667eea' }}>Open Dashboard</a>
                   </div>
                 </div>
               </div>
               <div style={styles.instructionsBox}>
-                <strong>ðŸ“‹ Setup Instructions:</strong>
+                <strong>📋 Setup Instructions:</strong>
                 <p style={{ margin: '8px 0 0 0', fontSize: '14px', lineHeight: '1.7', color: '#4a5568' }}>{generatedStream.instructions}</p>
               </div>
               <div style={styles.obsBox}>
-                <strong>ðŸŽ® OBS Settings:</strong>
+                <strong>🎮 OBS Settings:</strong>
                 <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4a5568', lineHeight: '1.7' }}>
-                  1. Open OBS â†’ Settings â†’ Stream<br />2. Service: Custom<br />
-                  3. Server: {generatedStream.rtmpUrl}<br />4. Stream Key: (from platform dashboard)<br />5. Click Apply â†’ Start Streaming
+                  1. Open OBS → Settings → Stream<br />2. Service: Custom<br />
+                  3. Server: {generatedStream.rtmpUrl}<br />4. Stream Key: (from platform dashboard)<br />5. Click Apply → Start Streaming
                 </p>
               </div>
             </div>
