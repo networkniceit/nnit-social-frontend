@@ -215,7 +215,10 @@ function MediaEditor() {
       setIsRecording(true);
       setRecordingTime(0);
       recordingTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
-    } catch (err) { alert('Microphone access denied: ' + err.message); }
+      setMicDenied(false);
+    } catch (err) {
+      setMicDenied(true);
+    }
   };
 
   const stopRecording = () => {
