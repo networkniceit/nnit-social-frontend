@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import axios from '../axios-config';
 
 function Calendar() {
@@ -356,7 +356,7 @@ const styles = {
   closeBtn: { background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#718096' },
   modalBody: { padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '75vh', overflowY: 'auto' },
   label: { fontSize: '13px', fontWeight: '600', color: '#4a5568', marginBottom: '4px', display: 'block' },
-  textarea: { width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' },
+  textarea: { width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', minHeight: '180px' },
   input: { width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' },
   platformRow: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
   platformBtn: { padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '13px', backgroundColor: '#f7fafc', color: '#4a5568' },
@@ -370,3 +370,4 @@ const styles = {
 };
 
 export default Calendar;
+
