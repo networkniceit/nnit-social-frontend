@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import axios from '../axios-config';
 
 function Calendar() {
@@ -160,12 +160,12 @@ function Calendar() {
               <div style={styles.postBadgeIcons}>
                 {(post.platforms || []).map(p => (
                   <span key={p}>
-                    {p === 'facebook' && '📘'}
-                    {p === 'instagram' && '📸'}
-                    {p === 'twitter' && '🐦'}
-                    {p === 'linkedin' && '💼'}
-                    {p === 'tiktok' && '🎵'}
-                    {p === 'youtube' && '▶️'}
+                    {p === 'facebook' && 'ðŸ“˜'}
+                    {p === 'instagram' && 'ðŸ“¸'}
+                    {p === 'twitter' && 'ðŸ¦'}
+                    {p === 'linkedin' && 'ðŸ’¼'}
+                    {p === 'tiktok' && 'ðŸŽµ'}
+                    {p === 'youtube' && 'â–¶ï¸'}
                   </span>
                 ))}
               </div>
@@ -185,7 +185,7 @@ function Calendar() {
   };
 
   const platformList = ['facebook', 'instagram', 'twitter', 'linkedin', 'tiktok', 'youtube'];
-  const platformEmoji = { facebook: '📘', instagram: '📸', twitter: '🐦', linkedin: '💼', tiktok: '🎵', youtube: '▶️' };
+  const platformEmoji = { facebook: 'ðŸ“˜', instagram: 'ðŸ“¸', twitter: 'ðŸ¦', linkedin: 'ðŸ’¼', tiktok: 'ðŸŽµ', youtube: 'â–¶ï¸' };
 
   return (
     <div style={styles.container}>
@@ -207,7 +207,7 @@ function Calendar() {
         </select>
         {selectedClient && (
           <div style={styles.stats}>
-            <span style={styles.statBadge}>📝 {posts.length} scheduled posts</span>
+            <span style={styles.statBadge}>ðŸ“ {posts.length} scheduled posts</span>
           </div>
         )}
       </div>
@@ -215,11 +215,11 @@ function Calendar() {
       {selectedClient ? (
         <div style={styles.calendarContainer}>
           <div style={styles.calendarHeader}>
-            <button onClick={() => changeMonth(-1)} style={styles.navButton}>← Previous</button>
+            <button onClick={() => changeMonth(-1)} style={styles.navButton}>â† Previous</button>
             <h2 style={styles.monthTitle}>
               {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
             </h2>
-            <button onClick={() => changeMonth(1)} style={styles.navButton}>Next →</button>
+            <button onClick={() => changeMonth(1)} style={styles.navButton}>Next â†’</button>
           </div>
           <div style={styles.calendar}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
@@ -239,9 +239,9 @@ function Calendar() {
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h3 style={styles.modalTitle}>
-                {modalMode === 'edit' ? '✏️ Edit Post' : modalMode === 'repost' ? '🔁 Repost' : '📄 Post Details'}
+                {modalMode === 'edit' ? 'âœï¸ Edit Post' : modalMode === 'repost' ? 'ðŸ” Repost' : 'ðŸ“„ Post Details'}
               </h3>
-              <button onClick={closeModal} style={styles.closeBtn}>✕</button>
+              <button onClick={closeModal} style={styles.closeBtn}>âœ•</button>
             </div>
 
             <div style={styles.modalBody}>
@@ -251,7 +251,7 @@ function Calendar() {
                 value={editData.content || ''}
                 onChange={e => setEditData({ ...editData, content: e.target.value })}
                 disabled={modalMode === 'view'}
-                rows={5}
+                rows={10}
               />
 
               <label style={styles.label}>Scheduled Time</label>
@@ -294,15 +294,15 @@ function Calendar() {
             <div style={styles.modalFooter}>
               {modalMode === 'view' && (
                 <>
-                  <button style={styles.btnEdit} onClick={() => setModalMode('edit')}>✏️ Edit</button>
-                  <button style={styles.btnRepost} onClick={() => setModalMode('repost')}>🔁 Repost</button>
-                  <button style={styles.btnDelete} onClick={handleDelete}>🗑️ Delete</button>
+                  <button style={styles.btnEdit} onClick={() => setModalMode('edit')}>âœï¸ Edit</button>
+                  <button style={styles.btnRepost} onClick={() => setModalMode('repost')}>ðŸ” Repost</button>
+                  <button style={styles.btnDelete} onClick={handleDelete}>ðŸ—‘ï¸ Delete</button>
                 </>
               )}
               {modalMode === 'edit' && (
                 <>
                   <button style={styles.btnSave} onClick={handleSaveEdit} disabled={saving}>
-                    {saving ? 'Saving...' : '💾 Save Changes'}
+                    {saving ? 'Saving...' : 'ðŸ’¾ Save Changes'}
                   </button>
                   <button style={styles.btnCancel} onClick={() => setModalMode('view')}>Cancel</button>
                 </>
@@ -310,7 +310,7 @@ function Calendar() {
               {modalMode === 'repost' && (
                 <>
                   <button style={styles.btnSave} onClick={handleRepost} disabled={saving}>
-                    {saving ? 'Posting...' : '🔁 Confirm Repost'}
+                    {saving ? 'Posting...' : 'ðŸ” Confirm Repost'}
                   </button>
                   <button style={styles.btnCancel} onClick={() => setModalMode('view')}>Cancel</button>
                 </>
@@ -349,11 +349,11 @@ const styles = {
   emptyText: { fontSize: '16px', color: '#718096' },
   toast: { position: 'fixed', top: '20px', right: '20px', color: 'white', padding: '12px 24px', borderRadius: '8px', fontWeight: '600', zIndex: 9999, fontSize: '14px' },
   overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modal: { backgroundColor: 'white', borderRadius: '12px', width: '560px', maxWidth: '95vw', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden' },
+  modal: { backgroundColor: 'white', borderRadius: '12px', width: '720px', maxWidth: '95vw', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f7fafc' },
   modalTitle: { fontSize: '18px', fontWeight: '700', color: '#2d3748', margin: 0 },
   closeBtn: { background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#718096' },
-  modalBody: { padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '60vh', overflowY: 'auto' },
+  modalBody: { padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '75vh', overflowY: 'auto' },
   label: { fontSize: '13px', fontWeight: '600', color: '#4a5568', marginBottom: '4px', display: 'block' },
   textarea: { width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' },
   input: { width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' },
