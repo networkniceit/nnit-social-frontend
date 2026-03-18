@@ -29,7 +29,7 @@ function Calendar() {
   const fetchPosts = async () => {
     try {
       const response = await axios.get(`/api/posts/scheduled/${selectedClient}`);
-      setPosts(response.data.posts || []);
+      setPosts(response.data || []);
     } catch (error) {
       console.error('Error:', error);
       setPosts([]);
@@ -38,7 +38,7 @@ function Calendar() {
 
   const getPostsForDate = (date) => {
     return posts.filter(post => {
-      const postDate = new Date(post.scheduledTime);
+      const postDate = new Date(post.scheduled_time);
       return postDate.toDateString() === date.toDateString();
     });
   };
