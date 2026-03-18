@@ -7,7 +7,7 @@ function Calendar() {
   const [posts, setPosts] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedPost, setSelectedPost] = useState(null);
-  const [modalMode, setModalMode] = useState(null); // 'view' | 'edit' | 'repost'
+  const [modalMode, setModalMode] = useState(null);
   const [editData, setEditData] = useState({});
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
@@ -124,6 +124,15 @@ function Calendar() {
     });
   };
 
+  const platformEmoji = {
+    facebook: '\uD83D\uDCD8',
+    instagram: '\uD83D\uDCF8',
+    twitter: '\uD83D\uDC26',
+    linkedin: '\uD83D\uDCBC',
+    tiktok: '\uD83C\uDFB5',
+    youtube: '\u25B6\uFE0F',
+  };
+
   const renderCalendar = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -159,14 +168,7 @@ function Calendar() {
             >
               <div style={styles.postBadgeIcons}>
                 {(post.platforms || []).map(p => (
-                  <span key={p}>
-                    {p === 'facebook' && 'ðŸ“˜'}
-                    {p === 'instagram' && 'ðŸ“¸'}
-                    {p === 'twitter' && 'ðŸ¦'}
-                    {p === 'linkedin' && 'ðŸ’¼'}
-                    {p === 'tiktok' && 'ðŸŽµ'}
-                    {p === 'youtube' && 'â–¶ï¸'}
-                  </span>
+                  <span key={p}>{platformEmoji[p]}</span>
                 ))}
               </div>
               <div style={styles.postTime}>
@@ -185,7 +187,6 @@ function Calendar() {
   };
 
   const platformList = ['facebook', 'instagram', 'twitter', 'linkedin', 'tiktok', 'youtube'];
-  const platformEmoji = { facebook: 'ðŸ“˜', instagram: 'ðŸ“¸', twitter: 'ðŸ¦', linkedin: 'ðŸ’¼', tiktok: 'ðŸŽµ', youtube: 'â–¶ï¸' };
 
   return (
     <div style={styles.container}>
@@ -207,7 +208,7 @@ function Calendar() {
         </select>
         {selectedClient && (
           <div style={styles.stats}>
-            <span style={styles.statBadge}>ðŸ“ {posts.length} scheduled posts</span>
+            <span style={styles.statBadge}>{posts.length} scheduled posts</span>
           </div>
         )}
       </div>
@@ -215,11 +216,11 @@ function Calendar() {
       {selectedClient ? (
         <div style={styles.calendarContainer}>
           <div style={styles.calendarHeader}>
-            <button onClick={() => changeMonth(-1)} style={styles.navButton}>â† Previous</button>
+            <button onClick={() => changeMonth(-1)} style={styles.navButton}>Previous</button>
             <h2 style={styles.monthTitle}>
               {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
             </h2>
-            <button onClick={() => changeMonth(1)} style={styles.navButton}>Next â†’</button>
+            <button onClick={() => changeMonth(1)} style={styles.navButton}>Next</button>
           </div>
           <div style={styles.calendar}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
@@ -239,9 +240,9 @@ function Calendar() {
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h3 style={styles.modalTitle}>
-                {modalMode === 'edit' ? 'âœï¸ Edit Post' : modalMode === 'repost' ? 'ðŸ” Repost' : 'ðŸ“„ Post Details'}
+                {modalMode === 'edit' ? 'Edit Post' : modalMode === 'repost' ? 'Repost' : 'Post Details'}
               </h3>
-              <button onClick={closeModal} style={styles.closeBtn}>âœ•</button>
+              <button onClick={closeModal} style={styles.closeBtn}>X</button>
             </div>
 
             <div style={styles.modalBody}>
@@ -294,15 +295,15 @@ function Calendar() {
             <div style={styles.modalFooter}>
               {modalMode === 'view' && (
                 <>
-                  <button style={styles.btnEdit} onClick={() => setModalMode('edit')}>âœï¸ Edit</button>
-                  <button style={styles.btnRepost} onClick={() => setModalMode('repost')}>ðŸ” Repost</button>
-                  <button style={styles.btnDelete} onClick={handleDelete}>ðŸ—‘ï¸ Delete</button>
+                  <button style={styles.btnEdit} onClick={() => setModalMode('edit')}>Edit</button>
+                  <button style={styles.btnRepost} onClick={() => setModalMode('repost')}>Repost</button>
+                  <button style={styles.btnDelete} onClick={handleDelete}>Delete</button>
                 </>
               )}
               {modalMode === 'edit' && (
                 <>
                   <button style={styles.btnSave} onClick={handleSaveEdit} disabled={saving}>
-                    {saving ? 'Saving...' : 'ðŸ’¾ Save Changes'}
+                    {saving ? 'Saving...' : 'Save Changes'}
                   </button>
                   <button style={styles.btnCancel} onClick={() => setModalMode('view')}>Cancel</button>
                 </>
@@ -310,7 +311,7 @@ function Calendar() {
               {modalMode === 'repost' && (
                 <>
                   <button style={styles.btnSave} onClick={handleRepost} disabled={saving}>
-                    {saving ? 'Posting...' : 'ðŸ” Confirm Repost'}
+                    {saving ? 'Posting...' : 'Confirm Repost'}
                   </button>
                   <button style={styles.btnCancel} onClick={() => setModalMode('view')}>Cancel</button>
                 </>
