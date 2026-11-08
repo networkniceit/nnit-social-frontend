@@ -2,11 +2,14 @@
 import React, { useEffect, useState } from 'react';
 import axios from '../axios-config';
 
-function Dashboard({ stats }) {
+function Dashboard({ stats: statsProp }) {
   const [clients, setClients] = useState([]);
+  const [liveStats, setLiveStats] = useState(null);
+  const stats = liveStats || statsProp;
 
   useEffect(() => {
     fetchClients();
+    axios.get('/api/dashboard/stats').then((r) => setLiveStats(r.data.stats)).catch((e) => console.error('Error fetching stats:', e));
   }, []);
 
   const fetchClients = async () => {
@@ -60,6 +63,7 @@ function Dashboard({ stats }) {
           <PlatformStat name="Twitter" count={stats?.platformsConnected?.twitter || 0} icon="🐦" />
           <PlatformStat name="LinkedIn" count={stats?.platformsConnected?.linkedin || 0} icon="💼" />
           <PlatformStat name="TikTok" count={stats?.platformsConnected?.tiktok || 0} icon="🎵" />
+          <PlatformStat name="YouTube" count={stats?.platformsConnected?.youtube || 0} icon="▶️" />
         </div>
       </div>
 
