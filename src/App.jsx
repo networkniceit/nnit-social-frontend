@@ -31,19 +31,19 @@ function App() {
       <div style={styles.container}>
         <aside style={styles.sidebar}>
           <div style={styles.logo}>
-            <h1 style={styles.logoText}>?? NNIT Social</h1>
+            <h1 style={styles.logoText}>📱 NNIT Social</h1>
             <p style={styles.logoSubtext}>Automation Suite</p>
           </div>
 
           <nav style={styles.nav}>
-            <NavLink to="/" icon="??" text="Dashboard" />
-            <NavLink to="/clients" icon="??" text="Clients" />
-            <NavLink to="/create-post" icon="??" text="Create Post" />
-            <NavLink to="/calendar" icon="??" text="Calendar" />
-            <NavLink to="/analytics" icon="??" text="Analytics" />
-            <NavLink to="/ai-assistant" icon="??" text="AI Assistant" />
+            <NavLink to="/" icon="📊" text="Dashboard" />
+            <NavLink to="/clients" icon="👥" text="Clients" />
+            <NavLink to="/create-post" icon="✍️" text="Create Post" />
+            <NavLink to="/calendar" icon="📅" text="Calendar" />
+            <NavLink to="/analytics" icon="📈" text="Analytics" />
+            <NavLink to="/ai-assistant" icon="🤖" text="AI Assistant" />
             <NavLink to="/media-editor" icon="🎬" text="Media Editor" />
-            <NavLink to="/settings" icon="??" text="Settings" />
+            <NavLink to="/settings" icon="⚙️" text="Settings" />
           </nav>
 
           <div style={styles.sidebarFooter}>
