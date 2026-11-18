@@ -7,50 +7,44 @@ function Analytics() {
   const [analytics, setAnalytics] = useState(null);
   const [engagement, setEngagement] = useState(null);
   const [growth, setGrowth] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchClients();
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    setAnalytics(null);
+    setEngagement(null);
+    setGrowth(null);
+    setError('');
+    setLoading(Boolean(selectedClient));
     if (selectedClient) {
-      fetchAnalytics();
-      fetchEngagement();
-      fetchGrowth();
+      const config = { signal: controller.signal };
+      Promise.all([
+        axios.get(`/api/analytics/${selectedClient}`, config),
+        axios.get(`/api/analytics/${selectedClient}/engagement?timeframe=month`, config),
+        axios.get(`/api/analytics/${selectedClient}/growth`, config)
+      ]).then(([summary, activity, trend]) => {
+        if (controller.signal.aborted) return;
+        setAnalytics(summary.data.analytics);
+        setEngagement(activity.data.engagement);
+        setGrowth(trend.data.growth);
+      }).catch(() => {
+        if (!controller.signal.aborted) setError('Could not load analytics. Please select the client again to retry.');
+      }).finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
     }
+    return () => controller.abort();
   }, [selectedClient]);
 
   const fetchClients = async () => {
     try {
       const response = await axios.get('/api/clients');
       setClients(response.data.clients);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
-  const fetchAnalytics = async () => {
-    try {
-      const response = await axios.get(`/api/analytics/${selectedClient}`);
-      setAnalytics(response.data.analytics);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
-  const fetchEngagement = async () => {
-    try {
-      const response = await axios.get(`/api/analytics/${selectedClient}/engagement?timeframe=month`);
-      setEngagement(response.data.engagement);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
-  const fetchGrowth = async () => {
-    try {
-      const response = await axios.get(`/api/analytics/${selectedClient}/growth`);
-      setGrowth(response.data.growth);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -74,8 +68,12 @@ function Analytics() {
         ))}
       </select>
 
+      {loading && <p role="status">Loading analytics...</p>}
+      {error && <p role="alert">{error}</p>}
+
       {analytics && (
         <>
+          <p>Post counts come from saved records. Followers, engagement and growth are not available until platform metrics are connected.</p>
           {/* Overview Stats */}
           <div style={styles.statsGrid}>
             <StatCard
@@ -87,19 +85,19 @@ function Analytics() {
             <StatCard
               icon="❤️"
               title="Total Engagement"
-              value={analytics.overview.totalEngagement.toLocaleString()}
+              value={formatMetric(analytics.overview.totalEngagement)}
               color="#f56565"
             />
             <StatCard
               icon="👥"
               title="Total Followers"
-              value={analytics.overview.totalFollowers.toLocaleString()}
+              value={formatMetric(analytics.overview.totalFollowers)}
               color="#48bb78"
             />
             <StatCard
               icon="📊"
               title="Avg Engagement Rate"
-              value={analytics.overview.avgEngagementRate.toFixed(2) + '%'}
+              value={Number.isFinite(analytics.overview.avgEngagementRate) ? analytics.overview.avgEngagementRate.toFixed(2) + '%' : 'Not available'}
               color="#ed8936"
             />
           </div>
@@ -109,11 +107,11 @@ function Analytics() {
             <div style={styles.card}>
               <h2 style={styles.cardTitle}>Engagement Breakdown (This Month)</h2>
               <div style={styles.metricsGrid}>
-                <Metric icon="👍" label="Likes" value={engagement.likes.toLocaleString()} />
-                <Metric icon="💬" label="Comments" value={engagement.comments.toLocaleString()} />
-                <Metric icon="🔄" label="Shares" value={engagement.shares.toLocaleString()} />
-                <Metric icon="🖱️" label="Clicks" value={engagement.clicks.toLocaleString()} />
-                <Metric icon="👁️" label="Impressions" value={engagement.impressions.toLocaleString()} />
+                <Metric icon="👍" label="Likes" value={formatMetric(engagement.likes)} />
+                <Metric icon="💬" label="Comments" value={formatMetric(engagement.comments)} />
+                <Metric icon="🔄" label="Shares" value={formatMetric(engagement.shares)} />
+                <Metric icon="🖱️" label="Clicks" value={formatMetric(engagement.clicks)} />
+                <Metric icon="👁️" label="Impressions" value={formatMetric(engagement.impressions)} />
               </div>
             </div>
           )}
@@ -125,19 +123,19 @@ function Analytics() {
               <div style={styles.growthGrid}>
                 <GrowthCard
                   title="Followers"
-                  current={growth.followers.current.toLocaleString()}
+                  current={formatMetric(growth.followers.current)}
                   change={growth.followers.change}
                   changePercent={growth.followers.changePercent}
                 />
                 <GrowthCard
                   title="Engagement"
-                  current={growth.engagement.current.toLocaleString()}
+                  current={formatMetric(growth.engagement.current)}
                   change={growth.engagement.change}
                   changePercent={growth.engagement.changePercent}
                 />
                 <GrowthCard
                   title="Reach"
-                  current={growth.reach.current.toLocaleString()}
+                  current={formatMetric(growth.reach.current)}
                   change={growth.reach.change}
                   changePercent={growth.reach.changePercent}
                 />
@@ -147,7 +145,7 @@ function Analytics() {
 
           {/* Platform Distribution */}
           <div style={styles.card}>
-            <h2 style={styles.cardTitle}>Platform Distribution</h2>
+            <h2 style={styles.cardTitle}>Confirmed Deliveries by Platform</h2>
             <div style={styles.platformChart}>
               {Object.entries(analytics.platforms).map(([platform, count]) => (
                 <div key={platform} style={styles.platformBar}>
@@ -158,7 +156,7 @@ function Analytics() {
                     <div
                       style={{
                         ...styles.bar,
-                        width: `${(count / analytics.overview.totalPosts) * 100}%`
+                        width: `${(analytics.overview.totalPosts ? count / analytics.overview.totalPosts : 0) * 100}%`
                       }}
                     />
                   </div>
@@ -168,10 +166,10 @@ function Analytics() {
             </div>
           </div>
 
-          {/* Top Performing Posts */}
+          {/* Recent Published Posts */}
           <div style={styles.card}>
-            <h2 style={styles.cardTitle}>Top Performing Posts</h2>
-            {analytics.topPerformingPosts.map(post => (
+            <h2 style={styles.cardTitle}>Recent Published Posts</h2>
+            {(analytics.recentPublishedPosts || []).map(post => (
               <div key={post.id} style={styles.postRow}>
                 <div style={styles.postContent}>
                   <p>{post.content}</p>
@@ -218,6 +216,10 @@ function Metric({ icon, label, value }) {
   );
 }
 
+function formatMetric(value) {
+  return Number.isFinite(value) ? value.toLocaleString() : 'Not available';
+}
+
 function GrowthCard({ title, current, change, changePercent }) {
   const isPositive = parseFloat(changePercent) > 0;
   return (
@@ -225,7 +227,7 @@ function GrowthCard({ title, current, change, changePercent }) {
       <h3 style={styles.growthTitle}>{title}</h3>
       <p style={styles.growthCurrent}>{current}</p>
       <p style={{ ...styles.growthChange, color: isPositive ? '#48bb78' : '#f56565' }}>
-        {isPositive ? '↑' : '↓'} {Math.abs(change)} ({changePercent}%)
+        {Number.isFinite(change) && Number.isFinite(changePercent) ? `${isPositive ? '↑' : '↓'} ${Math.abs(change)} (${changePercent}%)` : 'Not available'}
       </p>
     </div>
   );
