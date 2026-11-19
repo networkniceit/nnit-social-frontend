@@ -19,8 +19,37 @@ function CreatePost() {
   const [imagePreview, setImagePreview] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
   const [videoPreview, setVideoPreview] = useState(null);
-  const [postResults, setPostResults] = useState([]);
+  const [postResults, setPostResults] = useState(() => { try { const saved = JSON.parse(localStorage.getItem('nnit-social-post-results') || '[]'); return Array.isArray(saved) ? saved : []; } catch { return []; } });
+  useEffect(() => { try { localStorage.setItem('nnit-social-post-results', JSON.stringify(postResults)); } catch {} }, [postResults]);
   const [connectedPlatforms, setConnectedPlatforms] = useState([]);
+  const [tiktokCreator, setTiktokCreator] = useState(null);
+  const [tiktokError, setTiktokError] = useState('');
+  const [tiktok, setTiktok] = useState({ privacy: '', duration: 0, consent: false, comments: false, duet: false, stitch: false, ownBrand: false, branded: false, aiGenerated: false });
+  useEffect(() => {
+    let active = true;
+    if (formData.platforms.includes('tiktok')) {
+      setTiktokCreator(null);
+      setTiktokError('');
+      axios.get('/api/tiktok/creator').then(r => { if (active) setTiktokCreator(r.data.creator); })
+        .catch(e => { if (active) setTiktokError(e.response?.data?.error || 'Cannot check TikTok permissions. Reconnect in Settings.'); });
+    }
+    return () => { active = false; };
+  }, [formData.platforms.includes('tiktok')]);
+  useEffect(() => { setTiktok(previous => ({ ...previous, consent: false })); }, [formData.content, formData.hashtags]);
+  const validateTikTok = () => {
+    if (!formData.platforms.includes('tiktok')) return true;
+    if (!tiktokCreator || !tiktok.privacy || !tiktok.consent || !videoFile || !tiktok.duration || tiktok.duration > tiktokCreator.max_video_post_duration_sec) {
+      alert('For TikTok, attach and preview a video, select privacy, and confirm consent. Check the account duration limit.');
+      return false;
+    }
+    return true;
+  };
+  const checkTikTokStatus = async (index, publishId) => {
+    try {
+      const r = await axios.post('/api/tiktok/status', { publishId });
+      setPostResults(previous => previous.map((item, i) => i === index ? { ...item, ...r.data } : item));
+    } catch (e) { alert(e.response?.data?.error || 'Status check failed. Do not repost; try checking again.'); }
+  };
 
   useEffect(() => {
     fetchClients();
@@ -67,6 +96,7 @@ function CreatePost() {
   const handleVideoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setTiktok(previous => ({ ...previous, duration: 0, consent: false }));
       setVideoFile(file);
       setVideoPreview(URL.createObjectURL(file));
     }
@@ -162,7 +192,9 @@ function CreatePost() {
       return;
     }
 
+    if (!validateTikTok()) return;
     setPosting(true);
+    if (postResults.some(result => result.pending)) { alert('A previous upload is awaiting confirmation. Check its status before publishing again.'); setPosting(false); return; }
     setPostResults([]);
     const results = [];
     const fullContent = formData.content + (formData.hashtags ? '\n\n' + formData.hashtags : '');
@@ -204,6 +236,7 @@ function CreatePost() {
           body.videoUrl = videoUrl;
         }
         if (platform === 'tiktok') {
+          body.tiktok = tiktok;
           body.videoUrl = videoUrl;
         }
         if (platform === 'youtube') {
@@ -216,7 +249,7 @@ function CreatePost() {
           body: JSON.stringify(body)
         });
         const data = await response.json();
-        results.push({ platform, success: data.success, postId: data.postId, error: data.error });
+        results.push({ platform, ...data });
       } catch (err) {
         results.push({ platform, success: false, error: err.message });
       }
@@ -226,6 +259,7 @@ function CreatePost() {
     setPosting(false);
 
     const successCount = results.filter(r => r.success).length;
+    const pendingCount = results.filter(r => r.pending).length;
     if (successCount === results.length) {
       alert(`✅ Posted successfully to all ${successCount} platforms!`);
       setFormData({ clientId: '', content: '', platforms: [], scheduledTime: '', hashtags: '', videoUrl: '' });
@@ -235,7 +269,7 @@ function CreatePost() {
       setVideoFile(null);
       setVideoPreview(null);
     } else {
-      alert(`Posted to ${successCount}/${results.length} platforms. Check results below.`);
+      alert(`Confirmed ${successCount}/${results.length}; ${pendingCount} awaiting confirmation. Check results below. Do not repost pending uploads.`);
     }
   };
 
@@ -245,17 +279,25 @@ function CreatePost() {
       alert('Please fill in all required fields');
       return;
     }
+    if (!validateTikTok() || posting) return;
+    setPosting(true);
     try {
+      const media = [];
+      if (videoFile) media.push({ type: 'video', url: await uploadToCloudinary(videoFile, 'video'), tiktok });
+      if (imageFile) media.push({ type: 'image', url: await uploadToCloudinary(imageFile, 'image') });
       await axios.post('/api/posts/schedule', {
-        ...formData,
-        scheduledTime: formData.scheduledTime || new Date().toISOString()
+        ...formData, media,
+        content: formData.content + (formData.hashtags ? '\n\n' + formData.hashtags : ''),
+        scheduledTime: formData.scheduledTime ? new Date(formData.scheduledTime).toISOString() : new Date().toISOString()
       });
       alert('Post scheduled successfully!');
       setFormData({ clientId: '', content: '', platforms: [], scheduledTime: '', hashtags: '', videoUrl: '' });
+      setVideoFile(null); setVideoPreview(null); setImageFile(null); setImagePreview(null);
+      setTiktok(previous => ({ ...previous, privacy: '', duration: 0, consent: false }));
       setVariations([]);
     } catch (error) {
-      alert('Failed to schedule post');
-    }
+      alert(error.response?.data?.error || error.message || 'Failed to schedule post');
+    } finally { setPosting(false); }
   };
 
   const platformList = [
@@ -363,7 +405,7 @@ function CreatePost() {
               <label style={styles.label}>🎬 Video — Instagram Reels, TikTok, YouTube, Facebook (optional)</label>
               {videoPreview ? (
                 <div style={styles.imagePreviewWrapper}>
-                  <video src={videoPreview} controls style={{ maxWidth: '100%', borderRadius: '8px', maxHeight: '200px' }} />
+                  <video src={videoPreview} onLoadedMetadata={e => { const duration = e.currentTarget.duration; setTiktok(previous => ({ ...previous, duration })); }} controls style={{ maxWidth: '100%', borderRadius: '8px', maxHeight: '200px' }} />
                   <button type="button" onClick={removeVideo} style={styles.removeImageBtn}>✕ Remove</button>
                 </div>
               ) : (
@@ -404,6 +446,27 @@ function CreatePost() {
               </div>
             </div>
 
+            {formData.platforms.includes('tiktok') && <div style={styles.formGroup}>
+              <h3>TikTok publishing</h3>
+              {tiktokError && <p role="alert">{tiktokError}</p>}
+              {!tiktokCreator && !tiktokError && <p>Checking TikTok account...</p>}
+              {tiktokCreator && <>
+                <p>Posting as {tiktokCreator.creator_nickname || tiktokCreator.creator_username}. Maximum video length: {tiktokCreator.max_video_post_duration_sec} seconds.</p>
+                <label>Who can watch this video?
+                  <select value={tiktok.privacy} onChange={e => setTiktok({ ...tiktok, privacy: e.target.value, consent: false })} style={styles.input}>
+                    <option value="">Choose privacy</option>
+                    {(tiktokCreator.privacy_level_options || []).map(option => <option key={option} value={option}>{({ PUBLIC_TO_EVERYONE: 'Everyone', SELF_ONLY: 'Only me (private)', MUTUAL_FOLLOW_FRIENDS: 'Friends', FOLLOWER_OF_CREATOR: 'Followers' })[option] || option}</option>)}
+                  </select>
+                </label>
+                <p>Private posts are visible only to you. Public posting also depends on TikTok approving this app.</p>
+                {['comments', 'duet', 'stitch'].map(key => <label key={key} style={{ display: 'block' }}>
+                  <input type="checkbox" checked={tiktok[key]} disabled={tiktokCreator[key === 'comments' ? 'comment_disabled' : key + '_disabled']} onChange={e => setTiktok({ ...tiktok, [key]: e.target.checked })} /> Allow {key}
+                </label>)}
+                {[['ownBrand', 'Promotes my own brand or business'], ['branded', 'Paid partnership / promotes another brand'], ['aiGenerated', 'AI-generated content']].map(([key, label]) => <label key={key} style={{ display: 'block' }}><input type="checkbox" checked={tiktok[key]} onChange={e => setTiktok({ ...tiktok, [key]: e.target.checked, consent: false })} /> {label}</label>)}
+                <label style={{ display: 'block' }}><input type="checkbox" checked={tiktok.consent} onChange={e => setTiktok({ ...tiktok, consent: e.target.checked })} /> I reviewed this video and caption, have the necessary music/content rights, and authorize publishing to this TikTok account at the selected time. I agree to TikTok's <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noreferrer">Music Usage Confirmation</a>{tiktok.branded && <> and <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noreferrer">Branded Content Policy</a></>}.</label>
+              </>}
+            </div>}
+
             <div style={styles.formGroup}>
               <label style={styles.label}>Schedule Time (optional)</label>
               <input
@@ -416,7 +479,7 @@ function CreatePost() {
             </div>
 
             <div style={styles.submitButtons}>
-              <button type="button" onClick={handleSchedule} style={styles.scheduleButton}>
+              <button type="button" onClick={handleSchedule} disabled={posting} style={styles.scheduleButton}>
                 📅 Schedule Post
               </button>
               <button type="button" onClick={postToAllPlatforms} disabled={posting} style={styles.publishButton}>
@@ -431,7 +494,9 @@ function CreatePost() {
                   <div key={i} style={{ ...styles.resultItem, borderColor: result.success ? '#48bb78' : '#fc8181' }}>
                     <span>{platformIcons[result.platform]} {result.platform}</span>
                     <span style={{ color: result.success ? '#48bb78' : '#e53e3e', fontWeight: '600' }}>
-                      {result.success ? '✅ Posted' : `❌ ${result.error}`}
+                      {result.success ? '✅ Confirmed by TikTok/platform' : result.pending ? '⏳ Processing — not confirmed yet' : `❌ ${result.error || 'Not published'}`}
+                      {result.privacy === 'SELF_ONLY' && ' (private)'}
+                      {result.pending && result.publish_id && <button type="button" onClick={() => checkTikTokStatus(i, result.publish_id)}>Check TikTok status</button>}
                     </span>
                   </div>
                 ))}
