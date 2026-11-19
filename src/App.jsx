@@ -49,6 +49,11 @@ function App() {
           <div style={styles.sidebarFooter}>
             <p style={styles.footerText}>� 2026 NNIT Enterprise</p>
             <p style={styles.footerText}>networkniceit@gmail.com</p>
+            <p style={{ ...styles.footerText, opacity: '1' }}>
+              <Link to="/terms" style={{ color: 'inherit', textDecoration: 'underline' }}>Terms of Service</Link>
+              {' · '}
+              <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'underline' }}>Privacy Policy</Link>
+            </p>
           </div>
         </aside>
 
